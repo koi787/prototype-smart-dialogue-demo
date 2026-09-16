@@ -100,7 +100,7 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
     if (window.sessionStorage.getItem(submitSuccessNoticeKey) !== '1') return
     window.sessionStorage.removeItem(submitSuccessNoticeKey)
     setShowSubmitToast(true)
-    const timer = window.setTimeout(() => setShowSubmitToast(false), 1200)
+    const timer = window.setTimeout(() => setShowSubmitToast(false), 3000)
     return () => window.clearTimeout(timer)
   }, [])
 
@@ -294,7 +294,7 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
           </section>
         </div>
       )}
-      {showSubmitToast && <div className="mobile-toast" role="status" aria-live="polite">提交成功</div>}
+      {showSubmitToast && <div className="mobile-toast mobile-toast--success" role="status" aria-live="polite"><span className="mobile-toast__icon" aria-hidden="true">✓</span><span>提交成功</span></div>}
     </MobileShell>
   )
 }
