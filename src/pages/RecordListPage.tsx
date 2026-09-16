@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MobileShell } from '../components/MobileShell'
 import { StatusTag } from '../components/StatusTag'
-import { demoRoutes, navigate } from '../routes'
+import { demoRoutes, navigate, submitSuccessNoticeKey } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import type { ReceptionRecord, RecordStatus } from '../types/record'
 import type { EmployeeStoreScenario } from '../types/store'
@@ -87,9 +87,18 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(listFilterMemory.time)
   const [isTimeSheetOpen, setTimeSheetOpen] = useState(false)
   const [isStoreSheetOpen, setStoreSheetOpen] = useState(false)
+  const [showSubmitToast, setShowSubmitToast] = useState(false)
   useEffect(() => {
     if (storeScenario) setScenario(storeScenario)
   }, [setScenario, storeScenario])
+
+  useEffect(() => {
+    if (window.sessionStorage.getItem(submitSuccessNoticeKey) !== '1') return
+    window.sessionStorage.removeItem(submitSuccessNoticeKey)
+    setShowSubmitToast(true)
+    const timer = window.setTimeout(() => setShowSubmitToast(false), 1200)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   const scopedRecords = useMemo(
     () => records.filter((record) => record.storeId === currentStore.id && matchesTime(record, timeFilter)),
@@ -220,6 +229,7 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
           </section>
         </div>
       )}
+      {showSubmitToast && <div className="mobile-toast" role="status" aria-live="polite">提交成功</div>}
     </MobileShell>
   )
 }

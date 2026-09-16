@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MobileShell } from '../components/MobileShell'
-import { demoRoutes, navigate } from '../routes'
+import { demoRoutes, navigate, submitSuccessNoticeKey } from '../routes'
 import { RecordDetailPage } from './RecordDetailPage'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import { findMemberById, findMembersByPhone, type Member } from '../data/mockMembers'
@@ -46,13 +46,8 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   const [editingModuleKey, setEditingModuleKey] = useState<keyof StructuredContent | null>(null)
   const [moduleDraft, setModuleDraft] = useState('')
   const [editNotice, setEditNotice] = useState('')
-  const [showSubmitToast, setShowSubmitToast] = useState(false)
-  const submitTimerRef = useRef<number | null>(null)
+  const isSubmittingRef = useRef(false)
   const coCandidates = availableReceptionists.filter((teacher) => teacher.name !== primaryReceptionist && !coReceptionists.includes(teacher.name) && teacher.name.includes(coSearch.trim()))
-
-  useEffect(() => () => {
-    if (submitTimerRef.current !== null) window.clearTimeout(submitTimerRef.current)
-  }, [])
 
   useEffect(() => {
     if (!record) return
@@ -110,7 +105,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
     )
   }
 
-  if (record.status === 'submitted') return <RecordDetailPage recordId={record.id} />
+  if (record.status === 'submitted' && !isSubmittingRef.current) return <RecordDetailPage recordId={record.id} />
 
   const methodLabel = record.method === 'face-to-face' ? '面客模式' : '事后补录'
   const selectedReceptionStore = accessibleStores.find((store) => store.id === receptionStoreId)
@@ -269,9 +264,10 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
 
   const submitRecord = () => {
     if (!ensureCanSave()) return
+    isSubmittingRef.current = true
+    window.sessionStorage.setItem(submitSuccessNoticeKey, '1')
     updateRecord(record.id, { ...customerPatch(), status: 'submitted', recordingState: 'idle', submitter: mockCurrentEmployee.name })
-    setShowSubmitToast(true)
-    submitTimerRef.current = window.setTimeout(() => navigate(demoRoutes.records), 1000)
+    navigate(demoRoutes.records)
   }
 
   return (
@@ -280,8 +276,8 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
       onBack={() => navigate(demoRoutes.records)}
       fixedFooter={
         <div className="confirm-actions">
-          <button className="secondary-button" type="button" disabled={lookupInProgress || showSubmitToast} onClick={saveDraft}>保存草稿</button>
-          <button className="primary-button primary-button--large" type="button" disabled={lookupInProgress || showSubmitToast} onClick={submitRecord}>确认提交</button>
+          <button className="secondary-button" type="button" disabled={lookupInProgress} onClick={saveDraft}>保存草稿</button>
+          <button className="primary-button primary-button--large" type="button" disabled={lookupInProgress} onClick={submitRecord}>确认提交</button>
         </div>
       }
     >
@@ -376,8 +372,6 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
           ))}
         </div>
       </section>
-      {showSubmitToast && <div className="mobile-toast" role="status" aria-live="polite">提交成功</div>}
-
     </MobileShell>
   )
 }

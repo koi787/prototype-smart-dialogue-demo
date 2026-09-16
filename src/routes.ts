@@ -1,5 +1,7 @@
 import type { EmployeeStoreScenario } from './types/store'
 
+export const submitSuccessNoticeKey = 'prototype-smart-dialogue-demo.submit-success'
+
 export const demoRoutes = {
   home: '#/home',
   records: '#/records',
