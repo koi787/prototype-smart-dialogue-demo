@@ -155,13 +155,13 @@ export function RecordingPage({ recordId }: { recordId: string }) {
           <section className="mobile-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="recording-exit-title" onClick={(event) => event.stopPropagation()}>
             <div className="mobile-bottom-sheet__handle" />
             <div className="mobile-bottom-sheet__heading">
-              <h2 id="recording-exit-title">即将中断录音</h2>
+              <h2 id="recording-exit-title">退出录音</h2>
               <button type="button" onClick={() => setShowExitConfirm(false)} aria-label="关闭确认">×</button>
             </div>
-            <p>返回后当前录音将停止，是否继续？</p>
+            <p>退出后当前录音将结束，已采集内容会保留。<br />是否确认退出？</p>
             <div className="recording-fixed-actions">
               <button className="secondary-button" type="button" onClick={() => setShowExitConfirm(false)}>取消</button>
-              <button className="primary-button primary-button--large" type="button" onClick={exitRecording}>继续退出</button>
+              <button className="primary-button primary-button--large" type="button" onClick={exitRecording}>确认退出</button>
             </div>
           </section>
         </div>

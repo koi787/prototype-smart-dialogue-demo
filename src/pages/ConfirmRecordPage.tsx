@@ -341,7 +341,6 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
             )}
             {lookupStatus === 'invalid' && <p className="field-error">请输入正确的手机号，或清空后继续</p>}
             {phoneError && lookupStatus !== 'invalid' && <p className="field-error">{phoneError}</p>}
-            <p className="customer-boundary-note">完整手机号会查询 Mock 已有会员；不提供手动绑定、会员编辑或 CRM 操作。</p>
             <div className="inline-actions"><button className="text-button" type="button" onClick={cancelCustomerEdit}>取消</button><button className="small-primary-button" type="button" disabled={lookupInProgress} onClick={saveCustomer}>保存</button></div>
           </div>
         ) : (

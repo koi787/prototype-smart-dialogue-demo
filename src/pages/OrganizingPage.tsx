@@ -61,6 +61,8 @@ export function OrganizingPage({ recordId }: { recordId: string }) {
   }
 
   const hasStructuredResult = structuredContentLabels.every(({ key }) => Boolean(record.aiContent[key]?.trim()))
+  const transcriptReady = record.transcriptionStatus === 'success'
+  const aiOrganizing = record.aiStatus === 'processing'
 
   if (record.status === 'ready-for-review') {
     return (
@@ -75,7 +77,10 @@ export function OrganizingPage({ recordId }: { recordId: string }) {
         }
       >
         <section className="organizing-status-card organizing-status-card--ready">
-          <div className="organizing-status-icon">✓</div>
+          <div className="organizing-step-list">
+            <div className="organizing-step organizing-step--complete"><span>✓</span><strong>文字稿生成</strong></div>
+            <div className="organizing-step organizing-step--complete"><span>✓</span><strong>AI整理完成</strong></div>
+          </div>
           <h2>AI整理完成</h2>
           <p>接待记录已经整理完成，请检查内容后确认提交。</p>
         </section>
@@ -108,17 +113,24 @@ export function OrganizingPage({ recordId }: { recordId: string }) {
       }
     >
       <section className="organizing-status-card organizing-status-card--processing">
-        {record.transcriptionStatus === 'processing' ? (
+        <div className="organizing-step-list">
+          <div className={`organizing-step ${transcriptReady ? 'organizing-step--complete' : 'organizing-step--pending'}`}>
+            <span>{transcriptReady ? '✓' : '○'}</span><strong>文字稿生成</strong>
+          </div>
+          {transcriptReady && aiOrganizing && <div className="organizing-step organizing-step--pending"><span>○</span><strong>AI整理中</strong></div>}
+        </div>
+        {!transcriptReady ? (
           <>
-            <div className="organizing-status-icon organizing-status-icon--pending">…</div>
-            <strong className="organizing-status-label organizing-status-label--pending">文字稿生成中</strong>
             <h2>正在生成文字稿</h2>
             <p>正在将本次录音转换为文字。</p>
           </>
+        ) : !aiOrganizing ? (
+          <>
+            <h2>文字稿已生成</h2>
+            <p>正在准备 AI 整理接待记录。</p>
+          </>
         ) : (
           <>
-            <div className="organizing-status-icon">✓</div>
-            <strong className="organizing-status-label">文字稿已生成</strong>
             <h2>AI正在整理接待记录</h2>
             <p>正在根据本次接待文字稿整理接待记录。</p>
             <p>整理完成后，请检查内容并确认提交。</p>

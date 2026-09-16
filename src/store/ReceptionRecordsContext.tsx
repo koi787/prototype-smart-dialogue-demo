@@ -140,8 +140,11 @@ export function ReceptionRecordsProvider({ children }: { children: ReactNode }) 
       .filter((step) => step.progress > startingProgress)
       .map((step) => window.setTimeout(() => updateRecord(recordId, { organizingProgress: step.progress }), step.delay))
     timers.push(window.setTimeout(() => {
-      updateRecord(recordId, { transcriptionStatus: 'success', aiStatus: 'processing' })
+      updateRecord(recordId, { transcriptionStatus: 'success', aiStatus: 'pending' })
     }, 1200))
+    timers.push(window.setTimeout(() => {
+      updateRecord(recordId, { aiStatus: 'processing' })
+    }, 2200))
     timers.push(window.setTimeout(() => {
       updateRecord(recordId, {
         status: 'ready-for-review',
@@ -163,7 +166,7 @@ export function ReceptionRecordsProvider({ children }: { children: ReactNode }) 
         recordingState: 'processing',
         organizingProgress: 0,
         transcriptionStatus: 'processing',
-        aiStatus: 'processing',
+        aiStatus: 'pending',
       })
     }
     scheduleOrganizing(recordId)

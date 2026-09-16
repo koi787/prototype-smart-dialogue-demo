@@ -305,6 +305,11 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .organizing-status-icon { display: grid; width: 52px; height: 52px; place-items: center; margin: 0 auto 18px; border-radius: 50%; color: #fff; background: #52c41a; font-size: 24px; font-weight: 700; }
 .organizing-status-card--failed .organizing-status-icon { background: var(--brand-red); }
 .organizing-status-label { display: block; color: #52c41a; font-size: 14px; }
+.organizing-step-list { display: grid; gap: 10px; margin-bottom: 22px; text-align: left; }
+.organizing-step { display: flex; align-items: center; gap: 9px; color: #8c8c8c; font-size: 14px; }
+.organizing-step span { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid #d9d9d9; border-radius: 50%; color: #8c8c8c; font-size: 13px; font-weight: 700; }
+.organizing-step--complete { color: #389e0d; }
+.organizing-step--complete span { border-color: #52c41a; color: #fff; background: #52c41a; }
 .organizing-status-card h2 { margin: 13px 0 8px; font-size: 21px; line-height: 1.4; }
 .organizing-status-card p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
 .organizing-toast { position: fixed; right: 50%; bottom: 104px; z-index: 70; width: min(calc(100vw - 48px), 380px); padding: 11px 14px; border-radius: 10px; color: #fff; background: rgb(31 35 41 / 90%); box-shadow: 0 8px 24px rgb(31 35 41 / 18%); font-size: 12px; line-height: 1.5; text-align: center; transform: translateX(50%); }
