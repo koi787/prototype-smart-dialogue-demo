@@ -117,12 +117,14 @@ export function OrganizingPage({ recordId }: { recordId: string }) {
           <div className={`organizing-step ${transcriptReady ? 'organizing-step--complete' : 'organizing-step--pending'}`}>
             <span>{transcriptReady ? '✓' : '○'}</span><strong>文字稿生成</strong>
           </div>
-          {transcriptReady && aiOrganizing && <div className="organizing-step organizing-step--pending"><span>○</span><strong>AI整理中</strong></div>}
+          <div className={`organizing-step ${aiOrganizing ? 'organizing-step--processing' : 'organizing-step--pending'}`}>
+            <span>○</span><strong>{aiOrganizing ? 'AI整理中' : 'AI整理'}</strong>
+          </div>
         </div>
         {!transcriptReady ? (
           <>
-            <h2>正在生成文字稿</h2>
-            <p>正在将本次录音转换为文字。</p>
+            <h2>正在生成接待文字稿</h2>
+            <p>正在将录音内容转换为文字，请稍候。</p>
           </>
         ) : !aiOrganizing ? (
           <>
