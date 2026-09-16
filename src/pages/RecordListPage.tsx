@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MobileShell } from '../components/MobileShell'
+import { RecordingFloatingWindow } from '../components/RecordingFloatingWindow'
 import { StatusTag } from '../components/StatusTag'
+import { mockTranscriptLines } from '../data/mockTranscript'
 import { demoRoutes, navigate, submitSuccessNoticeKey } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import type { ReceptionRecord, RecordStatus } from '../types/record'
@@ -23,7 +25,8 @@ const statusFilters: Array<{ key: StatusFilter; label: string }> = [
   { key: 'submitted', label: '已提交' },
 ]
 
-function recordRoute(record: { id: string; status: RecordStatus }) {
+function recordRoute(record: { id: string; status: RecordStatus; recordingState: ReceptionRecord['recordingState'] }) {
+  if (record.recordingState === 'recording' || record.recordingState === 'paused') return demoRoutes.recording(record.id)
   if (record.status === 'processing' || record.status === 'failed') return demoRoutes.organizing(record.id)
   if (record.status === 'ready-for-review' || record.status === 'draft') return demoRoutes.confirm(record.id)
   return demoRoutes.detail(record.id)
@@ -34,7 +37,7 @@ function statusDescription(status: RecordStatus) {
   if (status === 'ready-for-review') return 'AI整理完成，请确认并提交'
   if (status === 'draft') return '已保存草稿'
   if (status === 'submitted') return '员工已完成确认提交'
-  return '本次内容整理失败'
+  return '识别异常，请稍后重试或联系技术人员。'
 }
 
 function displayTitle(record: ReceptionRecord) {
@@ -81,7 +84,7 @@ function timeFilterLabel(filter: TimeFilter) {
 }
 
 export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStoreScenario }) {
-  const { records } = useReceptionRecords()
+  const { records, updateRecord, startOrganizing } = useReceptionRecords()
   const { accessibleStores, currentStore, selectStore, setScenario } = useStoreContext()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(listFilterMemory.status)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(listFilterMemory.time)
@@ -104,6 +107,28 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
     () => records.filter((record) => record.storeId === currentStore.id && matchesTime(record, timeFilter)),
     [currentStore.id, records, timeFilter],
   )
+  const activeRecordingRecord = useMemo(
+    () => records.find((record) => record.storeId === currentStore.id && (record.recordingState === 'recording' || record.recordingState === 'paused')),
+    [currentStore.id, records],
+  )
+  const [floatingDurationSeconds, setFloatingDurationSeconds] = useState(activeRecordingRecord?.durationSeconds ?? 0)
+  useEffect(() => {
+    setFloatingDurationSeconds(activeRecordingRecord?.durationSeconds ?? 0)
+    if (!activeRecordingRecord || activeRecordingRecord.recordingState !== 'recording') return
+    const timer = window.setInterval(() => setFloatingDurationSeconds((current) => current + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [activeRecordingRecord?.id, activeRecordingRecord?.recordingState, activeRecordingRecord?.durationSeconds])
+
+  useEffect(() => {
+    if (!activeRecordingRecord || activeRecordingRecord.recordingState !== 'recording') return
+    const timer = window.setInterval(() => {
+      const currentRecord = records.find((record) => record.id === activeRecordingRecord.id)
+      const nextLine = currentRecord && mockTranscriptLines[currentRecord.transcript.length]
+      if (!currentRecord || !nextLine) return
+      updateRecord(currentRecord.id, { transcript: [...currentRecord.transcript, nextLine] })
+    }, 1600)
+    return () => window.clearInterval(timer)
+  }, [activeRecordingRecord?.id, activeRecordingRecord?.recordingState, records, updateRecord])
   const statusCounts = useMemo(() => ({
     all: scopedRecords.length,
     processing: scopedRecords.filter((record) => record.status === 'processing').length,
@@ -193,6 +218,21 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
           ))
         )}
       </div>
+
+      {activeRecordingRecord && (
+        <RecordingFloatingWindow
+          state={activeRecordingRecord.recordingState}
+          durationSeconds={floatingDurationSeconds}
+          onExpand={() => navigate(demoRoutes.recording(activeRecordingRecord.id))}
+          onPause={() => updateRecord(activeRecordingRecord.id, { recordingState: 'paused', durationSeconds: floatingDurationSeconds })}
+          onResume={() => updateRecord(activeRecordingRecord.id, { recordingState: 'recording' })}
+          onEnd={() => {
+            updateRecord(activeRecordingRecord.id, { recordingState: 'processing', durationSeconds: floatingDurationSeconds })
+            startOrganizing(activeRecordingRecord.id)
+            navigate(demoRoutes.organizing(activeRecordingRecord.id))
+          }}
+        />
+      )}
 
       {isTimeSheetOpen && (
         <div className="mobile-sheet-overlay" role="presentation" onClick={() => setTimeSheetOpen(false)}>

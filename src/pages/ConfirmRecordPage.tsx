@@ -82,6 +82,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
         const matches = findMembersByPhone(phone)
         if (matches.length === 1) {
           setMatchedMember(matches[0])
+          setCustomerName(matches[0].name)
           setLookupStatus('matched')
           return
         }
@@ -331,7 +332,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
         <div className="info-card__heading"><h3>客户信息</h3>{!editingCustomer && <button className="inline-action" type="button" onClick={openCustomerEdit}>编辑</button>}</div>
         {editingCustomer ? (
           <div className="customer-form">
-            <label>姓名（选填）<input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="请输入客户姓名" /></label>
+            <label>姓名（选填）<input value={lookupStatus === 'matched' && matchedMember ? matchedMember.name : customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="请输入客户姓名" readOnly={lookupStatus === 'matched' && Boolean(matchedMember)} /></label>
             <label>手机号（选填）<input inputMode="numeric" value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setPhoneError('') }} placeholder="请输入手机号" /></label>
             {lookupStatus !== 'empty' && lookupStatus !== 'invalid' && (
               <div className={`customer-lookup-state customer-lookup-state--${lookupStatus}`}>

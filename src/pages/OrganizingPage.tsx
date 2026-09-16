@@ -54,7 +54,7 @@ export function OrganizingPage({ recordId }: { recordId: string }) {
         <section className="organizing-status-card organizing-status-card--failed">
           <div className="organizing-status-icon">!</div>
           <h2>AI整理失败</h2>
-          <p>本次接待记录整理失败，请稍后处理。</p>
+          <p>识别异常，请稍后重试或联系技术人员。</p>
         </section>
       </MobileShell>
     )

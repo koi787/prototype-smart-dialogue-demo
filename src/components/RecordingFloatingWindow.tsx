@@ -7,7 +7,6 @@ type RecordingFloatingWindowProps = {
   onPause: () => void
   onResume: () => void
   onEnd: () => void
-  onClose: () => void
 }
 
 function stateLabel(state: RecordingState) {
@@ -23,7 +22,6 @@ export function RecordingFloatingWindow({
   onPause,
   onResume,
   onEnd,
-  onClose,
 }: RecordingFloatingWindowProps) {
   const isRecording = state === 'recording'
 
@@ -38,17 +36,14 @@ export function RecordingFloatingWindow({
       </button>
       {state !== 'processing' && (
         <button className="recording-float__action" type="button" onClick={isRecording ? onPause : onResume}>
-          {isRecording ? '暂停' : '继续'}
+          {isRecording ? '暂停' : '继续录音'}
         </button>
       )}
       {state !== 'processing' && (
         <button className="recording-float__action recording-float__action--end" type="button" onClick={onEnd}>
-          结束
+          结束录音
         </button>
       )}
-      <button className="recording-float__close" type="button" onClick={onClose} aria-label="关闭悬浮窗">
-        ×
-      </button>
     </aside>
   )
 }

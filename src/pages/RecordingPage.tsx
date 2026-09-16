@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MobileShell } from '../components/MobileShell'
-import { RecordingFloatingWindow, formatDuration } from '../components/RecordingFloatingWindow'
+import { formatDuration } from '../components/RecordingFloatingWindow'
+import { mockTranscriptLines } from '../data/mockTranscript'
 import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
-import type { RecordingState, TranscriptLine } from '../types/record'
-
-const mockTranscriptLines: TranscriptLine[] = [
-  { speaker: '老师', text: '最近身体有没有哪里不舒服？' },
-  { speaker: '客户', text: '最近肩颈经常酸痛，工作久坐比较多。' },
-  { speaker: '老师', text: '平时有固定的运动或拉伸习惯吗？' },
-  { speaker: '客户', text: '不太规律，希望找适合自己的改善方式。' },
-]
+import type { RecordingState } from '../types/record'
 
 export function RecordingPage({ recordId }: { recordId: string }) {
   const { getRecord, updateRecord, startOrganizing } = useReceptionRecords()
   const record = getRecord(recordId)
-  const [isMinimized, setIsMinimized] = useState(false)
   const initialDuration = record?.durationSeconds ?? 0
   const [durationSeconds, setDurationSeconds] = useState(initialDuration)
   const durationRef = useRef(initialDuration)
@@ -87,34 +80,16 @@ export function RecordingPage({ recordId }: { recordId: string }) {
     startOrganizing(record.id)
     navigate(demoRoutes.organizing(record.id))
   }
-  const closeFloatingWindow = () => {
-    if (isRecording) updateRecord(record.id, { recordingState: 'paused', durationSeconds: durationRef.current })
+  const minimizeRecording = () => {
+    updateRecord(record.id, { durationSeconds: durationRef.current })
     navigate(demoRoutes.records)
-  }
-
-  if (isMinimized && !isProcessing) {
-    return (
-      <main className="app-shell">
-        <section className="mobile-frame mobile-frame--recording-minimized">
-          <RecordingFloatingWindow
-            state={state}
-            durationSeconds={durationSeconds}
-            onExpand={() => setIsMinimized(false)}
-            onPause={pauseRecording}
-            onResume={resumeRecording}
-            onEnd={endRecording}
-            onClose={closeFloatingWindow}
-          />
-        </section>
-      </main>
-    )
   }
 
   return (
     <MobileShell
       title="录音采集"
       onBack={() => navigate(demoRoutes.create)}
-      topbarAction={(isRecording || isPaused) ? <button className="topbar-text-action" type="button" onClick={() => setIsMinimized(true)}>收起</button> : undefined}
+      topbarAction={(isRecording || isPaused) ? <button className="topbar-text-action" type="button" onClick={minimizeRecording}>收起</button> : undefined}
       fixedFooter={
         state === 'idle' ? (
           <button className="primary-button primary-button--large" type="button" onClick={startRecording}>开始录音</button>

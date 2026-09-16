@@ -299,9 +299,8 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .recording-float__main span:last-child { display: grid; gap: 2px; }
 .recording-float__main strong { font-size: 14px; font-variant-numeric: tabular-nums; }
 .recording-float__main small { color: #c7cbd0; font-size: 10px; }
-.recording-float__action, .recording-float__close { border: 0; color: #fff; background: transparent; cursor: pointer; font-size: 11px; }
+.recording-float__action { border: 0; color: #fff; background: transparent; cursor: pointer; font-size: 11px; }
 .recording-float__action--end { color: #ff7875; }
-.recording-float__close { padding: 0 2px; font-size: 20px; line-height: 1; }
 .organizing-status-card { margin-top: 40px; padding: 28px 20px; border: 1px solid var(--line); border-radius: 18px; text-align: center; }
 .organizing-status-icon { display: grid; width: 52px; height: 52px; place-items: center; margin: 0 auto 18px; border-radius: 50%; color: #fff; background: #52c41a; font-size: 24px; font-weight: 700; }
 .organizing-status-card--failed .organizing-status-icon { background: var(--brand-red); }
