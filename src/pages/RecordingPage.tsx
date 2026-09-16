@@ -11,6 +11,7 @@ export function RecordingPage({ recordId }: { recordId: string }) {
   const record = getRecord(recordId)
   const initialDuration = record?.durationSeconds ?? 0
   const [durationSeconds, setDurationSeconds] = useState(initialDuration)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
   const durationRef = useRef(initialDuration)
   const transcriptIndexRef = useRef(record?.transcript.length ?? 0)
   const state: RecordingState = record?.recordingState ?? 'idle'
@@ -84,11 +85,23 @@ export function RecordingPage({ recordId }: { recordId: string }) {
     updateRecord(record.id, { durationSeconds: durationRef.current })
     navigate(demoRoutes.records)
   }
+  const handleBack = () => {
+    if (state === 'recording') {
+      setShowExitConfirm(true)
+      return
+    }
+    navigate(demoRoutes.create)
+  }
+  const exitRecording = () => {
+    updateRecord(record.id, { recordingState: 'idle', durationSeconds: durationRef.current })
+    setShowExitConfirm(false)
+    navigate(demoRoutes.create)
+  }
 
   return (
     <MobileShell
       title="录音采集"
-      onBack={() => navigate(demoRoutes.create)}
+      onBack={handleBack}
       topbarAction={(isRecording || isPaused) ? <button className="topbar-text-action" type="button" onClick={minimizeRecording}>收起</button> : undefined}
       fixedFooter={
         state === 'idle' ? (
@@ -136,6 +149,23 @@ export function RecordingPage({ recordId }: { recordId: string }) {
           </div>
         )}
       </section>
+
+      {showExitConfirm && (
+        <div className="mobile-sheet-overlay" role="presentation" onClick={() => setShowExitConfirm(false)}>
+          <section className="mobile-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="recording-exit-title" onClick={(event) => event.stopPropagation()}>
+            <div className="mobile-bottom-sheet__handle" />
+            <div className="mobile-bottom-sheet__heading">
+              <h2 id="recording-exit-title">即将中断录音</h2>
+              <button type="button" onClick={() => setShowExitConfirm(false)} aria-label="关闭确认">×</button>
+            </div>
+            <p>返回后当前录音将停止，是否继续？</p>
+            <div className="recording-fixed-actions">
+              <button className="secondary-button" type="button" onClick={() => setShowExitConfirm(false)}>取消</button>
+              <button className="primary-button primary-button--large" type="button" onClick={exitRecording}>继续退出</button>
+            </div>
+          </section>
+        </div>
+      )}
 
     </MobileShell>
   )

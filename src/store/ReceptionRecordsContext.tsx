@@ -140,6 +140,9 @@ export function ReceptionRecordsProvider({ children }: { children: ReactNode }) 
       .filter((step) => step.progress > startingProgress)
       .map((step) => window.setTimeout(() => updateRecord(recordId, { organizingProgress: step.progress }), step.delay))
     timers.push(window.setTimeout(() => {
+      updateRecord(recordId, { transcriptionStatus: 'success', aiStatus: 'processing' })
+    }, 1200))
+    timers.push(window.setTimeout(() => {
       updateRecord(recordId, {
         status: 'ready-for-review',
         recordingState: 'idle',

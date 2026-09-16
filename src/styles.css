@@ -326,6 +326,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .customer-form { display: grid; gap: 12px; margin-top: 16px; }
 .customer-form label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
 .customer-form input, .customer-form select { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid #dfe3e6; border-radius: 9px; color: var(--ink); background: #fff; outline: none; }
+.customer-form input:read-only { color: #8c8c8c; background: #f7f8fa; cursor: not-allowed; }
 .customer-form input:focus, .customer-form select:focus { border-color: #ff7875; box-shadow: 0 0 0 2px #fff1f0; }
 .reception-info-form { margin-top: 16px; }
 .reception-readonly-field { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }

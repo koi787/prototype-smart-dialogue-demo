@@ -108,12 +108,23 @@ export function OrganizingPage({ recordId }: { recordId: string }) {
       }
     >
       <section className="organizing-status-card organizing-status-card--processing">
-        <div className="organizing-status-icon">✓</div>
-        <strong className="organizing-status-label">文字稿已生成</strong>
-        <h2>AI正在整理接待记录</h2>
-        <p>AI正在根据本次接待文字稿整理接待记录。</p>
-        <p>整理完成后，请检查内容并确认提交。</p>
-        <p>你可以先返回列表，整理将在后台继续进行。</p>
+        {record.transcriptionStatus === 'processing' ? (
+          <>
+            <div className="organizing-status-icon organizing-status-icon--pending">…</div>
+            <strong className="organizing-status-label organizing-status-label--pending">文字稿生成中</strong>
+            <h2>正在生成文字稿</h2>
+            <p>正在将本次录音转换为文字。</p>
+          </>
+        ) : (
+          <>
+            <div className="organizing-status-icon">✓</div>
+            <strong className="organizing-status-label">文字稿已生成</strong>
+            <h2>AI正在整理接待记录</h2>
+            <p>正在根据本次接待文字稿整理接待记录。</p>
+            <p>整理完成后，请检查内容并确认提交。</p>
+            <p>你可以先返回列表，整理将在后台继续进行。</p>
+          </>
+        )}
       </section>
       {showWaitNotice && (
         <div className="organizing-toast" role="status" aria-live="polite">

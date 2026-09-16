@@ -91,6 +91,7 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
   const [isTimeSheetOpen, setTimeSheetOpen] = useState(false)
   const [isStoreSheetOpen, setStoreSheetOpen] = useState(false)
   const [showSubmitToast, setShowSubmitToast] = useState(false)
+  const [recordingConflictOpen, setRecordingConflictOpen] = useState(false)
   useEffect(() => {
     if (storeScenario) setScenario(storeScenario)
   }, [setScenario, storeScenario])
@@ -108,8 +109,8 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
     [currentStore.id, records, timeFilter],
   )
   const activeRecordingRecord = useMemo(
-    () => records.find((record) => record.storeId === currentStore.id && (record.recordingState === 'recording' || record.recordingState === 'paused')),
-    [currentStore.id, records],
+    () => records.find((record) => record.recordingState === 'recording' || record.recordingState === 'paused'),
+    [records],
   )
   const [floatingDurationSeconds, setFloatingDurationSeconds] = useState(activeRecordingRecord?.durationSeconds ?? 0)
   useEffect(() => {
@@ -151,6 +152,14 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
     setTimeFilter(merged)
   }
 
+  const handleCreateRecord = () => {
+    if (activeRecordingRecord) {
+      setRecordingConflictOpen(true)
+      return
+    }
+    navigate(demoRoutes.create)
+  }
+
   const storeContext = (
     <button className="store-context-select" type="button" onClick={() => setStoreSheetOpen(true)}>
       {currentStore.name}<span aria-hidden="true">›</span>
@@ -164,7 +173,7 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
         <h2>接待记录</h2>
       </div>
 
-      <button className="primary-button primary-button--large" type="button" onClick={() => navigate(demoRoutes.create)}>
+      <button className="primary-button primary-button--large" type="button" onClick={handleCreateRecord}>
         <span aria-hidden="true">＋</span> 新建记录
       </button>
 
@@ -265,6 +274,22 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
             <div className="mobile-bottom-sheet__heading"><h2 id="store-select-title">选择当前门店</h2><button type="button" onClick={() => setStoreSheetOpen(false)} aria-label="关闭门店选择">×</button></div>
             <div className="time-range-options">
               {accessibleStores.map((store) => <button className={currentStore.id === store.id ? 'time-range-option is-active' : 'time-range-option'} key={store.id} type="button" onClick={() => { selectStore(store.id); setStoreSheetOpen(false) }}><span>{store.name}</span>{currentStore.id === store.id && <b>✓</b>}</button>)}
+            </div>
+          </section>
+        </div>
+      )}
+      {recordingConflictOpen && activeRecordingRecord && (
+        <div className="mobile-sheet-overlay" role="presentation" onClick={() => setRecordingConflictOpen(false)}>
+          <section className="mobile-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="recording-conflict-title" onClick={(event) => event.stopPropagation()}>
+            <div className="mobile-bottom-sheet__handle" />
+            <div className="mobile-bottom-sheet__heading">
+              <h2 id="recording-conflict-title">当前无法新建记录</h2>
+              <button type="button" onClick={() => setRecordingConflictOpen(false)} aria-label="关闭提示">×</button>
+            </div>
+            <p>当前正在录音中，请结束后继续操作</p>
+            <div className="recording-fixed-actions">
+              <button className="secondary-button" type="button" onClick={() => setRecordingConflictOpen(false)}>取消</button>
+              <button className="primary-button primary-button--large" type="button" onClick={() => { setRecordingConflictOpen(false); navigate(demoRoutes.recording(activeRecordingRecord.id)) }}>返回当前录音</button>
             </div>
           </section>
         </div>
