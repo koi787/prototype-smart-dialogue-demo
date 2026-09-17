@@ -511,6 +511,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .admin-status-pill--failed { color: #cf1322; background: #fff1f0; }
 .admin-view-button { padding: 4px 0; border: 0; color: #2f54eb; background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
 .admin-view-button:hover { color: #1d39c4; }
+.customer-table__avatar { display: inline-grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: #fff; background: #ff7875; font-size: 13px; font-weight: 700; }
 .admin-inline-link { padding: 0; border: 0; color: #2f54eb; background: transparent; cursor: pointer; font: inherit; font-weight: 700; }
 .admin-inline-link:hover { color: #1d39c4; text-decoration: underline; }
 .admin-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 15px; color: #9aa1a9; font-size: 11px; }

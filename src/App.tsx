@@ -9,7 +9,7 @@ import { ConfirmRecordPage } from './pages/ConfirmRecordPage'
 import { ModuleEditPage } from './pages/ModuleEditPage'
 import { AdminRecordsPage } from './pages/AdminRecordsPage'
 import { AdminDialogueRecordsPage } from './pages/AdminDialogueRecordsPage'
-import { AdminMemberDetailPage } from './pages/AdminMemberDetailPage'
+import { AdminCustomerListPage } from './pages/AdminCustomerListPage'
 import { AobenHomePage } from './pages/AobenHomePage'
 import { MemberCenterPage } from './pages/MemberCenterPage'
 import { MobileMemberDetailPage } from './pages/MobileMemberDetailPage'
@@ -28,7 +28,7 @@ function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  const isAdminMode = route.kind === 'admin-records' || route.kind === 'admin-dialogue-records' || route.kind === 'admin-dialogue-detail' || route.kind === 'member-detail'
+  const isAdminMode = route.kind === 'admin-records' || route.kind === 'admin-dialogue-records' || route.kind === 'admin-dialogue-detail' || route.kind === 'admin-customer-list' || route.kind === 'member-detail'
   const mode: DemoMode = isAdminMode ? 'admin' : 'mobile'
 
   let page: ReactElement
@@ -75,8 +75,11 @@ function AppContent() {
     case 'admin-dialogue-detail':
       page = <AdminDialogueRecordsPage initialRecordId={route.recordId} />
       break
+    case 'admin-customer-list':
+      page = <AdminCustomerListPage />
+      break
     case 'member-detail':
-      page = <AdminMemberDetailPage memberId={route.memberId} />
+      page = <AdminCustomerListPage initialMemberId={route.memberId} />
       break
   }
 

@@ -3,9 +3,10 @@ import { demoRoutes, navigate } from '../routes'
 
 type AdminShellProps = {
   children: ReactNode
+  activeNav?: 'dialogue' | 'members'
 }
 
-export function AdminShell({ children }: AdminShellProps) {
+export function AdminShell({ children, activeNav = 'dialogue' }: AdminShellProps) {
   return (
     <main className="admin-shell">
       <header className="admin-product-bar">
@@ -34,14 +35,14 @@ export function AdminShell({ children }: AdminShellProps) {
             </button>
             <div className="admin-nav-group">
               <div className="admin-nav-group__label"><span aria-hidden="true">♧</span> 潜客管理</div>
-              <button className="admin-nav-item admin-nav-item--active" type="button" onClick={() => navigate(demoRoutes.adminDialogueRecords)}>
+              <button className={`admin-nav-item${activeNav === 'dialogue' ? ' admin-nav-item--active' : ''}`} type="button" onClick={() => navigate(demoRoutes.adminDialogueRecords)}>
                 <span aria-hidden="true">◌</span> 智能对话记录
               </button>
             </div>
             <div className="admin-nav-group">
               <div className="admin-nav-group__label"><span aria-hidden="true">♙</span> 会员中心</div>
-              <button className="admin-nav-item" type="button" onClick={() => navigate(demoRoutes.memberDetail('member-001'))}>
-                <span aria-hidden="true">◉</span> 会员详情
+              <button className={`admin-nav-item${activeNav === 'members' ? ' admin-nav-item--active' : ''}`} type="button" onClick={() => navigate(demoRoutes.adminMemberList)}>
+                <span aria-hidden="true">◉</span> 客户列表
               </button>
             </div>
           </nav>

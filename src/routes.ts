@@ -19,6 +19,7 @@ export const demoRoutes = {
   adminDetail: (recordId: string) => `#/admin/records/${recordId}/detail`,
   adminDialogueRecords: '#/admin/dialogue-records',
   adminDialogueDetail: (recordId: string) => `#/admin/dialogue-records/${recordId}`,
+  adminMemberList: '#/admin/member-center',
   memberDetail: (memberId: string) => `#/admin/member-center/members/${memberId}`,
 } as const
 
@@ -37,6 +38,7 @@ export type AppRoute =
   | { kind: 'admin-records' }
   | { kind: 'admin-dialogue-records' }
   | { kind: 'admin-dialogue-detail'; recordId: string }
+  | { kind: 'admin-customer-list' }
   | { kind: 'member-detail'; memberId: string }
 
 export function parseRoute(hash: string): AppRoute {
@@ -57,6 +59,7 @@ export function parseRoute(hash: string): AppRoute {
   if (path === '/records/new') return { kind: 'create' }
   if (path === '/admin/records') return { kind: 'admin-records' }
   if (path === '/admin/dialogue-records') return { kind: 'admin-dialogue-records' }
+  if (path === '/admin/member-center') return { kind: 'admin-customer-list' }
 
   const mobileDialogueDetailMatch = pathname.match(/^\/member-center\/members\/([^/]+)\/dialogue\/([^/]+)$/)
   if (mobileDialogueDetailMatch) return { kind: 'mobile-member-dialogue-detail', memberId: mobileDialogueDetailMatch[1], recordId: mobileDialogueDetailMatch[2] }
