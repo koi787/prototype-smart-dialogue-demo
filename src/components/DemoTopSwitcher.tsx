@@ -7,7 +7,7 @@ export function DemoTopSwitcher({ mode }: { mode: DemoMode }) {
     <header className="demo-top-switcher">
       <div className="demo-top-switcher__brand">
         <span className="brand-dot" aria-hidden="true" />
-        <strong>0022 智能对话 Demo</strong>
+        <strong>奥本 SCRM 管理系统</strong>
       </div>
       <div className="demo-top-switcher__tabs" role="tablist" aria-label="Demo 演示端切换">
         <button
