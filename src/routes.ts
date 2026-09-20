@@ -2,6 +2,8 @@ import type { EmployeeStoreScenario } from './types/store'
 
 export const submitSuccessNoticeKey = 'prototype-smart-dialogue-demo.submit-success'
 
+export type DemoMode = 'mobile' | 'admin'
+
 export const demoRoutes = {
   home: '#/home',
   records: '#/records',
@@ -40,6 +42,31 @@ export type AppRoute =
   | { kind: 'admin-dialogue-detail'; recordId: string }
   | { kind: 'admin-customer-list' }
   | { kind: 'member-detail'; memberId: string }
+
+function isAdminPath(path: string) {
+  return path.replace(/^#/, '').split('?')[0].startsWith('/admin/')
+}
+
+export function isEmbedMode(search = window.location.search) {
+  return new URLSearchParams(search).get('embed') === '1'
+}
+
+export function getEmbedMode(hash = window.location.hash, search = window.location.search): DemoMode | null {
+  if (!isEmbedMode(search)) return null
+  return isAdminPath(hash) ? 'admin' : 'mobile'
+}
+
+export function getHashMode(hash: string): DemoMode {
+  return isAdminPath(hash) ? 'admin' : 'mobile'
+}
+
+export function getEmbedEntryRoute(mode: DemoMode) {
+  return mode === 'admin' ? demoRoutes.adminDialogueRecords : demoRoutes.records
+}
+
+export function isRouteAllowedInMode(route: string, mode: DemoMode) {
+  return getHashMode(route) === mode
+}
 
 export function parseRoute(hash: string): AppRoute {
   const path = (hash || demoRoutes.home).replace(/^#/, '')
@@ -89,5 +116,7 @@ export function parseRoute(hash: string): AppRoute {
 }
 
 export function navigate(route: string) {
+  const embedMode = getEmbedMode()
+  if (embedMode && !isRouteAllowedInMode(route, embedMode)) return
   window.location.hash = route.replace(/^#/, '')
 }

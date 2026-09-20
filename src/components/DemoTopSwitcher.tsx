@@ -1,8 +1,10 @@
-import { demoRoutes, navigate } from '../routes'
+import { demoRoutes, navigate, type DemoMode } from '../routes'
 
-export type DemoMode = 'mobile' | 'admin'
+export type { DemoMode } from '../routes'
 
-export function DemoTopSwitcher({ mode }: { mode: DemoMode }) {
+export function DemoTopSwitcher({ mode, embedded }: { mode: DemoMode; embedded?: boolean }) {
+  if (embedded) return null
+
   return (
     <header className="demo-top-switcher">
       <div className="demo-top-switcher__brand">

@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactElement } from 'react'
-import { parseRoute, type AppRoute } from './routes'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { getEmbedEntryRoute, getEmbedMode, isRouteAllowedInMode, parseRoute, type AppRoute, type DemoMode } from './routes'
 import { CreateRecordPage } from './pages/CreateRecordPage'
 import { RecordDetailPage } from './pages/RecordDetailPage'
 import { RecordListPage } from './pages/RecordListPage'
@@ -14,19 +14,31 @@ import { AobenHomePage } from './pages/AobenHomePage'
 import { MemberCenterPage } from './pages/MemberCenterPage'
 import { MobileMemberDetailPage } from './pages/MobileMemberDetailPage'
 import { MobileMemberDialogueDetailPage } from './pages/MobileMemberDialogueDetailPage'
-import { DemoTopSwitcher, type DemoMode } from './components/DemoTopSwitcher'
+import { DemoTopSwitcher } from './components/DemoTopSwitcher'
 import { ReceptionRecordsProvider } from './store/ReceptionRecordsContext'
 import { StoreProvider } from './store/StoreContext'
 import './styles.css'
 
 function AppContent() {
-  const [route, setRoute] = useState<AppRoute>(() => parseRoute(window.location.hash))
+  const embedModeRef = useRef<DemoMode | null>(getEmbedMode())
+
+  const getSafeRoute = () => {
+    const embedMode = embedModeRef.current
+    if (embedMode && !isRouteAllowedInMode(window.location.hash, embedMode)) {
+      const entryRoute = getEmbedEntryRoute(embedMode)
+      window.location.hash = entryRoute
+      return parseRoute(entryRoute)
+    }
+    return parseRoute(window.location.hash)
+  }
+
+  const [route, setRoute] = useState<AppRoute>(getSafeRoute)
 
   useEffect(() => {
-    const handleHashChange = () => setRoute(parseRoute(window.location.hash))
+    const handleHashChange = () => setRoute(getSafeRoute())
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isAdminMode = route.kind === 'admin-records' || route.kind === 'admin-dialogue-records' || route.kind === 'admin-dialogue-detail' || route.kind === 'admin-customer-list' || route.kind === 'member-detail'
   const mode: DemoMode = isAdminMode ? 'admin' : 'mobile'
@@ -83,7 +95,7 @@ function AppContent() {
       break
   }
 
-  return <div className={isAdminMode ? 'demo-root demo-root--admin' : 'demo-root demo-root--mobile'}><DemoTopSwitcher mode={mode} />{page}</div>
+  return <div className={isAdminMode ? 'demo-root demo-root--admin' : 'demo-root demo-root--mobile'}><DemoTopSwitcher mode={mode} embedded={embedModeRef.current !== null} />{page}</div>
 }
 
 function App() {
