@@ -51,6 +51,9 @@ export type ReceptionRecord = {
   customerBindingStatus: CustomerBindingStatus
   memberId?: string
   customerId?: string
+  customerName?: string
+  customerPhone?: string
+  customerRelationStatus?: CustomerBindingStatus
   transcriptionStatus: TranscriptionStatus
   aiStatus: AiStatus
   recordingState: RecordingState

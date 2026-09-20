@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test api/ai-summary.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

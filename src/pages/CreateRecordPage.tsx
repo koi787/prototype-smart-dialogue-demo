@@ -32,22 +32,22 @@ export function CreateRecordPage() {
       </section>
 
       <div className="method-list">
-        <button className={selectedMethod === 'face-to-face' ? 'method-card method-card--selected' : 'method-card'} type="button" onClick={() => setSelectedMethod('face-to-face')}>
-          <span className="method-card__icon">♧</span>
-          <span className="method-card__copy">
-            <strong>面客模式</strong>
-            <small>客户在场，实时记录沟通内容</small>
-          </span>
-          {selectedMethod === 'face-to-face' && <span className="method-card__check">✓</span>}
-        </button>
-
         <button className={selectedMethod === 'afterwards' ? 'method-card method-card--selected' : 'method-card'} type="button" onClick={() => setSelectedMethod('afterwards')}>
-          <span className="method-card__icon method-card__icon--gray">▤</span>
+          <span className="method-card__icon method-card__icon--gray" aria-hidden="true">✎</span>
           <span className="method-card__copy">
             <strong>事后补录</strong>
             <small>接待结束后，由员工语音复盘</small>
           </span>
           {selectedMethod === 'afterwards' && <span className="method-card__check">✓</span>}
+        </button>
+
+        <button className={selectedMethod === 'face-to-face' ? 'method-card method-card--selected' : 'method-card'} type="button" onClick={() => setSelectedMethod('face-to-face')}>
+          <span className="method-card__icon" aria-hidden="true">♧</span>
+          <span className="method-card__copy">
+            <strong>面客模式</strong>
+            <small>客户在场，实时记录沟通内容</small>
+          </span>
+          {selectedMethod === 'face-to-face' && <span className="method-card__check">✓</span>}
         </button>
       </div>
 

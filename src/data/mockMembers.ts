@@ -58,6 +58,27 @@ export function findMembersByPhone(phone: string) {
   return mockMembers.filter((member) => member.phone === phone)
 }
 
+export function createMockMember(name: string, phone: string) {
+  const idSuffix = Date.now()
+  const member: Member = {
+    id: `member-demo-${idSuffix}`,
+    customerId: `customer-demo-${idSuffix}`,
+    name,
+    phone,
+    membershipLabel: '待完善会员',
+  }
+  mockMembers.push(member)
+  return member
+}
+
+export function updateMockMemberName(memberId: string, name: string) {
+  const index = mockMembers.findIndex((member) => member.id === memberId)
+  if (index < 0) return undefined
+  const updatedMember = { ...mockMembers[index], name }
+  mockMembers[index] = updatedMember
+  return updatedMember
+}
+
 export function findMemberById(memberId?: string, customerId?: string) {
   return mockMembers.find((member) => member.id === memberId || member.customerId === customerId)
 }

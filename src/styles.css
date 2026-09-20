@@ -353,13 +353,13 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .reception-co-candidates span { padding: 8px 5px; color: var(--muted); font-size: 12px; }
 .reception-co-picker__done { display: block; margin: 7px 0 0 auto; }
 .field-error { margin: -4px 0 0; color: var(--brand-red-dark); font-size: 12px; }
-.customer-boundary-note { margin: 12px 0 0; color: #9a9fa6; font-size: 11px; line-height: 1.5; }
 .customer-lookup-state { display: flex; align-items: center; gap: 9px; margin-top: 3px; padding: 10px 11px; border-radius: 10px; font-size: 12px; line-height: 1.4; }
 .customer-lookup-state span { color: inherit; }
 .customer-lookup-state--querying { color: #2f54eb; background: #f0f5ff; }
 .customer-lookup-state--matched { color: #389e0d; background: #f6ffed; }
 .customer-lookup-state--matched span { color: #5d7960; }
 .customer-lookup-state--not-found, .customer-lookup-state--ambiguous, .customer-lookup-state--error { color: #cf1322; background: #fff1f0; }
+.customer-lookup-helper { margin: -2px 0 0; color: #8a9199; font-size: 12px; line-height: 1.5; }
 .admin-entry { display: block; margin: 18px auto 0; }
 .admin-page-intro { margin-bottom: 18px; }
 .admin-readonly-badge { padding: 5px 9px; border-radius: 999px; color: #2f54eb; background: #f0f5ff; font-size: 11px; font-weight: 700; }

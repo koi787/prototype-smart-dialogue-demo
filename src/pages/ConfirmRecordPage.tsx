@@ -3,7 +3,7 @@ import { MobileShell } from '../components/MobileShell'
 import { demoRoutes, navigate, submitSuccessNoticeKey } from '../routes'
 import { RecordDetailPage } from './RecordDetailPage'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
-import { findMemberById, findMembersByPhone, type Member } from '../data/mockMembers'
+import { createMockMember, findMemberById, findMembersByPhone, updateMockMemberName, type Member } from '../data/mockMembers'
 import { mockCurrentEmployee, mockEmployeeReceptionistPermissionIds, mockReceptionists } from '../data/mockStaff'
 import { structuredContentLabels, type CustomerLookupStatus, type StructuredContent } from '../types/record'
 import { useStoreContext } from '../store/StoreContext'
@@ -12,7 +12,7 @@ const phonePattern = /^1[3-9]\d{9}$/
 
 function lookupStatusMessage(status: CustomerLookupStatus) {
   if (status === 'querying') return '正在查询客户...'
-  if (status === 'not-found') return '未查询到该客户'
+  if (status === 'not-found') return '未查询到该客户，保存后将新增客户信息。'
   if (status === 'ambiguous' || status === 'error') return '客户查询异常，请稍后重试'
   return ''
 }
@@ -65,6 +65,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   useEffect(() => {
     const phone = customerPhone.trim()
     setMatchedMember(undefined)
+    setPhoneError('')
     if (!phone) {
       setLookupStatus('empty')
       return
@@ -110,7 +111,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
 
   const methodLabel = record.method === 'face-to-face' ? '面客模式' : '事后补录'
   const selectedReceptionStore = accessibleStores.find((store) => store.id === receptionStoreId)
-  const validPhone = !customerPhone || phonePattern.test(customerPhone)
+  const validPhone = phonePattern.test(customerPhone.trim())
   const lookupInProgress = lookupStatus === 'querying'
   const customerDirty = editingCustomer && (customerName !== record.customerInfo.name || customerPhone !== record.customerInfo.phone)
   const moduleDirty = editingModuleKey !== null && moduleDraft !== record.aiContent[editingModuleKey]
@@ -217,18 +218,14 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
     setEditNotice('')
   }
 
-  const showPhoneError = () => {
-    setPhoneError('请输入正确的手机号，或清空后继续')
-    setEditingCustomer(true)
-  }
-
   const ensureCanSave = (allowCurrentEdit = false) => {
     if (!allowCurrentEdit && hasUnsavedEdit) {
       setEditNotice('当前卡片有未保存修改，请先点击当前卡片的“保存”或“取消”。')
       return false
     }
     if (!validPhone) {
-      showPhoneError()
+      setPhoneError(customerPhone.trim() ? '请输入正确的手机号，或清空后继续' : '请输入手机号')
+      setEditingCustomer(true)
       return false
     }
     if (lookupInProgress) {
@@ -236,22 +233,59 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
       setEditingCustomer(true)
       return false
     }
+    if (lookupStatus === 'ambiguous' || lookupStatus === 'error') {
+      setPhoneError(lookupStatusMessage(lookupStatus))
+      setEditingCustomer(true)
+      return false
+    }
+    if (lookupStatus !== 'matched' && lookupStatus !== 'not-found') {
+      setPhoneError('请先完成客户查询')
+      setEditingCustomer(true)
+      return false
+    }
+    if (!customerName.trim()) {
+      setPhoneError('请输入客户姓名')
+      setEditingCustomer(true)
+      return false
+    }
+    if (!allowCurrentEdit && (!matchedMember || lookupStatus !== 'matched')) {
+      setEditNotice('请先保存客户信息，完成用户关联。')
+      setEditingCustomer(true)
+      return false
+    }
     return true
   }
 
-  const customerPatch = () => ({
+  const customerPatch = (member = matchedMember) => ({
     customerInfo: {
-      name: matchedMember?.name ?? customerName,
-      phone: customerPhone,
+      name: customerName.trim(),
+      phone: customerPhone.trim(),
     },
-    customerBindingStatus: lookupStatus === 'matched' && matchedMember ? 'bound' as const : 'unbound' as const,
-    memberId: lookupStatus === 'matched' ? matchedMember?.id : undefined,
-    customerId: lookupStatus === 'matched' ? matchedMember?.customerId : undefined,
+    customerName: customerName.trim(),
+    customerPhone: customerPhone.trim(),
+    customerBindingStatus: 'bound' as const,
+    customerRelationStatus: 'bound' as const,
+    memberId: member?.id,
+    customerId: member?.customerId,
   })
 
   const saveCustomer = () => {
     if (!ensureCanSave(true)) return
-    updateRecord(record.id, { ...customerPatch(), status: 'draft' })
+    let member = matchedMember
+    if (!member && lookupStatus === 'not-found') {
+      member = createMockMember(customerName.trim(), customerPhone.trim())
+    }
+    if (!member) {
+      setPhoneError('客户查询未完成，请稍后重试')
+      return
+    }
+    if (lookupStatus === 'matched' && customerName.trim() !== member.name) {
+      member = updateMockMemberName(member.id, customerName.trim()) ?? member
+    }
+    setMatchedMember(member)
+    setCustomerName(member.name)
+    setLookupStatus('matched')
+    updateRecord(record.id, { ...customerPatch(member), status: 'draft' })
     setEditingCustomer(false)
     setPhoneError('')
     setEditNotice('')
@@ -332,26 +366,28 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
         <div className="info-card__heading"><h3>客户信息</h3>{!editingCustomer && <button className="inline-action" type="button" onClick={openCustomerEdit}>编辑</button>}</div>
         {editingCustomer ? (
           <div className="customer-form">
-            <label>姓名（选填）<input value={lookupStatus === 'matched' && matchedMember ? matchedMember.name : customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="请输入客户姓名" readOnly={lookupStatus === 'matched' && Boolean(matchedMember)} /></label>
-            <label>手机号（选填）<input inputMode="numeric" value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setPhoneError('') }} placeholder="请输入手机号" /></label>
-            {lookupStatus !== 'empty' && lookupStatus !== 'invalid' && (
-              <div className={`customer-lookup-state customer-lookup-state--${lookupStatus}`}>
-                {lookupStatus === 'matched' && matchedMember ? <><strong>✓ 客户已存在</strong><span>会员姓名：{matchedMember.name}</span></> : <span>{lookupStatusMessage(lookupStatus)}</span>}
-              </div>
+            <label>手机号（必填）<input inputMode="numeric" value={customerPhone} onChange={(event) => { const nextPhone = event.target.value; setCustomerPhone(nextPhone); setPhoneError(''); if (nextPhone !== customerPhone && (Boolean(matchedMember) || lookupStatus !== 'empty' || Boolean(customerName))) { setMatchedMember(undefined); setCustomerName(''); setLookupStatus('empty') } }} placeholder="请输入手机号" /></label>
+            {lookupStatus === 'matched' && matchedMember && (
+              <div className="customer-lookup-state customer-lookup-state--matched"><strong>✓ 客户已存在</strong></div>
+            )}
+            {(lookupStatus === 'querying' || lookupStatus === 'ambiguous' || lookupStatus === 'error') && (
+              <div className={`customer-lookup-state customer-lookup-state--${lookupStatus}`}><span>{lookupStatusMessage(lookupStatus)}</span></div>
             )}
             {lookupStatus === 'invalid' && <p className="field-error">请输入正确的手机号，或清空后继续</p>}
+            <label>姓名（必填）<input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder={lookupStatus === 'matched' || lookupStatus === 'not-found' ? '请输入客户姓名' : '请先输入手机号'} disabled={lookupStatus !== 'matched' && lookupStatus !== 'not-found'} /></label>
+            {lookupStatus === 'matched' && matchedMember && customerName.trim() !== matchedMember.name && <p className="customer-lookup-helper">姓名已修改，保存后将同步更新客户信息。</p>}
+            {lookupStatus === 'not-found' && <p className="customer-lookup-helper">未查询到该客户，保存后将新增客户信息。</p>}
             {phoneError && lookupStatus !== 'invalid' && <p className="field-error">{phoneError}</p>}
             <div className="inline-actions"><button className="text-button" type="button" onClick={cancelCustomerEdit}>取消</button><button className="small-primary-button" type="button" disabled={lookupInProgress} onClick={saveCustomer}>保存</button></div>
           </div>
         ) : (
           <>
             <dl className="info-grid info-grid--customer">
-              <div><dt>姓名</dt><dd>{customerName || '未填写'}</dd></div>
               <div><dt>手机号</dt><dd>{customerPhone || '未填写'}</dd></div>
+              <div><dt>姓名</dt><dd>{customerName || '未填写'}</dd></div>
             </dl>
-            {lookupStatus === 'matched' && matchedMember ? <div className="customer-lookup-state customer-lookup-state--matched"><strong>✓ 客户已存在</strong><span>会员姓名：{matchedMember.name}</span></div> : lookupStatus !== 'empty' && lookupStatus !== 'invalid' && <div className={`customer-lookup-state customer-lookup-state--${lookupStatus}`}><span>{lookupStatusMessage(lookupStatus)}</span></div>}
+            {record.customerBindingStatus === 'bound' ? <div className="customer-lookup-state customer-lookup-state--matched"><strong>✓ 客户已关联</strong></div> : lookupStatus === 'not-found' ? <p className="customer-lookup-helper">未查询到该客户，保存后将新增客户信息。</p> : lookupStatus !== 'empty' && lookupStatus !== 'invalid' && <div className={`customer-lookup-state customer-lookup-state--${lookupStatus}`}><span>{lookupStatusMessage(lookupStatus)}</span></div>}
             {lookupStatus === 'invalid' && <p className="field-error">请输入正确的手机号，或清空后继续</p>}
-            <p className="customer-boundary-note">手机号查询结果决定关联状态；不根据姓名或手机号是否填写推断已关联。</p>
           </>
         )}
       </section>

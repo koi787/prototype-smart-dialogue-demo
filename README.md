@@ -16,7 +16,7 @@ Demo 固定提供两条完整演示流程：
 - 面客模式：客户在场，模拟实时交流和语音采集。
 - 事后补录：员工接待结束后，模拟语音复盘和记录生成。
 
-所有数据均为本地 Mock，不接入真实 ASR、AI、后端接口、数据库或登录系统。
+录音与文字稿继续使用本地 Mock；AI 整理通过同源 `/api/ai-summary` 服务端函数调用 TokenHub，不接入真实 ASR、数据库或登录系统。
 
 ## 页面规划
 
@@ -52,6 +52,8 @@ Demo 顶层提供“移动端 H5 / SCRM 后台”切换。后台使用独立 PC 
 pnpm install
 pnpm dev
 ```
+
+部署或使用 Vercel Function 时，在环境变量中配置 `.env.example` 所列的 TokenHub 参数；不要把真实 API Key 放入 `VITE_*` 变量或前端代码。
 
 生产构建：
 
