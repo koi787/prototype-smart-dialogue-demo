@@ -7,9 +7,10 @@ export type DemoMode = 'mobile' | 'admin'
 export const demoRoutes = {
   home: '#/home',
   records: '#/records',
+  recordHistory: (status?: 'all' | 'processing' | 'pending' | 'submitted') => `#/records/history${status ? `?status=${status}` : ''}`,
   mobileRecords: '#/mobile/records',
   memberCenter: '#/member-center',
-  mobileMemberDetail: (memberId: string, tab?: 'follow-up') => `#/member-center/members/${memberId}${tab ? '?tab=follow-up' : ''}`,
+  mobileMemberDetail: (memberId: string, tab?: 'follow-up', source?: 'records') => `#/member-center/members/${memberId}${tab || source ? `?${[tab ? 'tab=follow-up' : '', source ? 'from=records' : ''].filter(Boolean).join('&')}` : ''}`,
   mobileMemberDialogueDetail: (memberId: string, recordId: string) => `#/member-center/members/${memberId}/dialogue/${recordId}`,
   create: '#/records/new',
   recording: (recordId: string) => `#/records/${recordId}/recording`,
@@ -28,8 +29,9 @@ export const demoRoutes = {
 export type AppRoute =
   | { kind: 'home' }
   | { kind: 'records'; storeScenario?: EmployeeStoreScenario }
+  | { kind: 'record-history'; storeScenario?: EmployeeStoreScenario; initialStatus?: 'all' | 'processing' | 'pending' | 'submitted' }
   | { kind: 'member-center'; initialPhone?: string }
-  | { kind: 'mobile-member-detail'; memberId: string; initialTab?: 'follow-up' }
+  | { kind: 'mobile-member-detail'; memberId: string; initialTab?: 'follow-up'; backToRecords?: boolean }
   | { kind: 'mobile-member-dialogue-detail'; memberId: string; recordId: string }
   | { kind: 'create' }
   | { kind: 'recording'; recordId: string }
@@ -78,6 +80,13 @@ export function parseRoute(hash: string): AppRoute {
     const phone = new URLSearchParams(search).get('phone') ?? undefined
     return { kind: 'member-center', initialPhone: phone }
   }
+  if (pathname === '/records/history') {
+    const params = new URLSearchParams(search)
+    const employee = params.get('employee')
+    const status = params.get('status')
+    const validStatus = status === 'all' || status === 'processing' || status === 'pending' || status === 'submitted' ? status : undefined
+    return { kind: 'record-history', ...(employee === 'single' ? { storeScenario: 'single' as const } : {}), ...(validStatus ? { initialStatus: validStatus } : {}) }
+  }
   if (pathname === '/records') {
     const employee = new URLSearchParams(search).get('employee')
     return { kind: 'records', ...(employee === 'single' ? { storeScenario: 'single' as const } : {}) }
@@ -93,8 +102,9 @@ export function parseRoute(hash: string): AppRoute {
 
   const mobileMemberDetailMatch = pathname.match(/^\/member-center\/members\/([^/]+)$/)
   if (mobileMemberDetailMatch) {
-    const tab = new URLSearchParams(search).get('tab')
-    return { kind: 'mobile-member-detail', memberId: mobileMemberDetailMatch[1], ...(tab === 'follow-up' ? { initialTab: 'follow-up' as const } : {}) }
+    const params = new URLSearchParams(search)
+    const tab = params.get('tab')
+    return { kind: 'mobile-member-detail', memberId: mobileMemberDetailMatch[1], ...(tab === 'follow-up' ? { initialTab: 'follow-up' as const } : {}), ...(params.get('from') === 'records' ? { backToRecords: true } : {}) }
   }
 
   const memberDetailMatch = pathname.match(/^\/admin\/member-center\/members\/([^/]+)$/)

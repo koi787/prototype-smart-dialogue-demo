@@ -4,6 +4,7 @@ export type Member = {
   name: string
   phone: string
   membershipLabel: string
+  storeId?: string
   gender?: string
   birthday?: string
   isNewMember?: string
@@ -25,6 +26,8 @@ export const mockMembers: Member[] = [
     name: '李女士',
     phone: '13800000000',
     membershipLabel: '瑜伽年卡会员',
+    storeId: 'guomao',
+    storeName: '奥本瑜伽 · 国贸店',
   },
   {
     id: 'member-chen',
@@ -32,6 +35,7 @@ export const mockMembers: Member[] = [
     name: '陈榛',
     phone: '18344639949',
     membershipLabel: '瑜伽年卡会员',
+    storeId: 'guomao',
     gender: '女',
     birthday: '1992-08-16',
     isNewMember: '否',
@@ -44,6 +48,86 @@ export const mockMembers: Member[] = [
     source: '小红书',
     registeredAt: '2026-06-22 11:04:49',
     note: '关注体态改善与肩颈放松。',
+  },
+  {
+    id: 'member-wang',
+    customerId: 'customer-wang',
+    name: '王女士',
+    phone: '13910002001',
+    membershipLabel: '瑜伽体验会员',
+    storeId: 'sanlitun',
+    storeName: '奥本瑜伽 · 三里屯店',
+    registeredAt: '2026-08-18 10:20:00',
+  },
+  {
+    id: 'member-zhao',
+    customerId: 'customer-zhao',
+    name: '赵女士',
+    phone: '13710002002',
+    membershipLabel: '瑜伽体验会员',
+    storeId: 'guomao',
+    storeName: '奥本瑜伽 · 国贸店',
+    registeredAt: '2026-08-21 14:05:00',
+  },
+  {
+    id: 'member-zhou',
+    customerId: 'customer-zhou',
+    name: '周女士',
+    phone: '13610002003',
+    membershipLabel: '瑜伽体验会员',
+    storeId: 'wanxiangcheng',
+    storeName: '奥本瑜伽 · 万象城店',
+    registeredAt: '2026-08-25 16:40:00',
+  },
+  {
+    id: 'member-liu',
+    customerId: 'customer-liu',
+    name: '刘女士',
+    phone: '13510002004',
+    membershipLabel: '瑜伽年卡会员',
+    storeId: 'sanlitun',
+    storeName: '奥本瑜伽 · 三里屯店',
+    registeredAt: '2026-08-29 09:15:00',
+  },
+  {
+    id: 'member-sun',
+    customerId: 'customer-sun',
+    name: '孙女士',
+    phone: '13310002005',
+    membershipLabel: '瑜伽年卡会员',
+    storeId: 'guomao',
+    storeName: '奥本瑜伽 · 国贸店',
+    registeredAt: '2026-09-01 11:30:00',
+  },
+  {
+    id: 'member-wu',
+    customerId: 'customer-wu',
+    name: '吴女士',
+    phone: '18910002006',
+    membershipLabel: '瑜伽会员',
+    storeId: 'guomao',
+    storeName: '奥本瑜伽 · 国贸店',
+    registeredAt: '2026-09-03 13:10:00',
+  },
+  {
+    id: 'member-zheng',
+    customerId: 'customer-zheng',
+    name: '郑女士',
+    phone: '18810002007',
+    membershipLabel: '瑜伽体验会员',
+    storeId: 'sanlitun',
+    storeName: '奥本瑜伽 · 三里屯店',
+    registeredAt: '2026-09-06 17:20:00',
+  },
+  {
+    id: 'member-xu',
+    customerId: 'customer-xu',
+    name: '徐女士',
+    phone: '18710002008',
+    membershipLabel: '瑜伽体验会员',
+    storeId: 'wanxiangcheng',
+    storeName: '奥本瑜伽 · 万象城店',
+    registeredAt: '2026-09-09 10:00:00',
   },
 ]
 

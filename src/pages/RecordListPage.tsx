@@ -83,7 +83,7 @@ function timeFilterLabel(filter: TimeFilter) {
   return '自定义时间'
 }
 
-export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStoreScenario }) {
+export function RecordListPage({ storeScenario, initialStatus }: { storeScenario?: EmployeeStoreScenario; initialStatus?: StatusFilter }) {
   const { records, updateRecord, startOrganizing } = useReceptionRecords()
   const { accessibleStores, currentStore, selectStore, setScenario } = useStoreContext()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(listFilterMemory.status)
@@ -95,6 +95,12 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
   useEffect(() => {
     if (storeScenario) setScenario(storeScenario)
   }, [setScenario, storeScenario])
+
+  useEffect(() => {
+    if (!initialStatus) return
+    listFilterMemory.status = initialStatus
+    setStatusFilter(initialStatus)
+  }, [initialStatus])
 
   useEffect(() => {
     if (window.sessionStorage.getItem(submitSuccessNoticeKey) !== '1') return
@@ -167,7 +173,7 @@ export function RecordListPage({ storeScenario }: { storeScenario?: EmployeeStor
   )
 
   return (
-    <MobileShell title="智能对话" onBack={() => navigate(demoRoutes.home)} backLabel="返回奥本中台">
+    <MobileShell title="接待记录" onBack={() => navigate(demoRoutes.records)} backLabel="返回智能对话">
       <div className="record-list-store-context">{storeContext}</div>
       <div className="page-intro page-intro--record-list">
         <h2>接待记录</h2>

@@ -3,6 +3,7 @@ import { getEmbedEntryRoute, getEmbedMode, isRouteAllowedInMode, parseRoute, typ
 import { CreateRecordPage } from './pages/CreateRecordPage'
 import { RecordDetailPage } from './pages/RecordDetailPage'
 import { RecordListPage } from './pages/RecordListPage'
+import { CustomerHomePage } from './pages/CustomerHomePage'
 import { RecordingPage } from './pages/RecordingPage'
 import { OrganizingPage } from './pages/OrganizingPage'
 import { ConfirmRecordPage } from './pages/ConfirmRecordPage'
@@ -49,13 +50,16 @@ function AppContent() {
       page = <AobenHomePage />
       break
     case 'records':
-      page = <RecordListPage storeScenario={route.storeScenario} />
+      page = <CustomerHomePage storeScenario={route.storeScenario} />
+      break
+    case 'record-history':
+      page = <RecordListPage storeScenario={route.storeScenario} initialStatus={route.initialStatus} />
       break
     case 'member-center':
       page = <MemberCenterPage initialPhone={route.initialPhone} />
       break
     case 'mobile-member-detail':
-      page = <MobileMemberDetailPage memberId={route.memberId} initialTab={route.initialTab} />
+      page = <MobileMemberDetailPage memberId={route.memberId} initialTab={route.initialTab} backToRecords={route.backToRecords} />
       break
     case 'mobile-member-dialogue-detail':
       page = <MobileMemberDialogueDetailPage memberId={route.memberId} recordId={route.recordId} />

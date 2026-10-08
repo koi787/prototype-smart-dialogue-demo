@@ -8,11 +8,12 @@ import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 const memberTabs = ['基本信息', '跟进记录', '课卡合同', '订单中心', '上课记录', '储值合同', '其他']
 const followUpTypes = ['智能对话', '跟进记录', '拜访记录']
 
-export function MobileMemberDetailPage({ memberId, initialTab }: { memberId: string; initialTab?: 'follow-up' }) {
+export function MobileMemberDetailPage({ memberId, initialTab, backToRecords }: { memberId: string; initialTab?: 'follow-up'; backToRecords?: boolean }) {
   const { records } = useReceptionRecords()
   const [activeTab, setActiveTab] = useState(initialTab === 'follow-up' ? '跟进记录' : '基本信息')
   const [activeFollowUpType, setActiveFollowUpType] = useState('智能对话')
   const member = findMemberById(memberId)
+  const handleBack = () => navigate(backToRecords ? demoRoutes.records : demoRoutes.memberCenter)
 
   const dialogueRecords = useMemo(() => records
     .filter((record) => (
@@ -24,14 +25,14 @@ export function MobileMemberDetailPage({ memberId, initialTab }: { memberId: str
 
   if (!member) {
     return (
-      <MobileShell title="会员详情" onBack={() => navigate(demoRoutes.memberCenter)} bottomNav={<AobenMobileNav active="member" />}>
+      <MobileShell title="会员详情" onBack={handleBack} bottomNav={<AobenMobileNav active="member" />}>
         <section className="member-center-empty"><div className="member-center-empty__icon">⊘</div><h2>会员不存在</h2><p>请返回会员中心重新查询。</p></section>
       </MobileShell>
     )
   }
 
   return (
-    <MobileShell title="会员详情" onBack={() => navigate(demoRoutes.memberCenter)} bottomNav={<AobenMobileNav active="member" />}>
+    <MobileShell title="会员详情" onBack={handleBack} bottomNav={<AobenMobileNav active="member" />}>
       <section className="mobile-member-summary">
         <span className="mobile-member-avatar">{member.name.slice(0, 1)}</span>
         <div><strong>{member.name}</strong><span>{member.phone}</span></div>
