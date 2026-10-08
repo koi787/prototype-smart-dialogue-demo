@@ -6,6 +6,8 @@ export type RecordingState = 'idle' | 'recording' | 'paused' | 'processing'
 
 export type CustomerBindingStatus = 'bound' | 'unbound'
 
+export type RecordCreationSource = 'direct' | 'customer-list'
+
 export type CustomerLookupStatus = 'empty' | 'invalid' | 'querying' | 'matched' | 'not-found' | 'ambiguous' | 'error'
 
 export type TranscriptionStatus = 'processing' | 'success' | 'failed'
@@ -35,6 +37,7 @@ export type TranscriptLine = {
 
 export type ReceptionRecord = {
   id: string
+  creationSource?: RecordCreationSource
   title: string
   storeId: string
   storeName: string

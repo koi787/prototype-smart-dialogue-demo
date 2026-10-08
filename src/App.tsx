@@ -65,7 +65,7 @@ function AppContent() {
       page = <MobileMemberDialogueDetailPage memberId={route.memberId} recordId={route.recordId} />
       break
     case 'create':
-      page = <CreateRecordPage />
+      page = <CreateRecordPage preselectedCustomerId={route.preselectedCustomerId} initialMethod={route.initialMethod} />
       break
     case 'detail':
       page = <RecordDetailPage recordId={route.recordId} admin={route.admin} />

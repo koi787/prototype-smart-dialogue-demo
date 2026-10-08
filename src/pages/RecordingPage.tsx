@@ -68,6 +68,11 @@ export function RecordingPage({ recordId }: { recordId: string }) {
   const isRecording = state === 'recording'
   const isPaused = state === 'paused'
   const isProcessing = state === 'processing'
+  const returnToCreation = () => navigate(
+    record.creationSource === 'customer-list' && record.customerId
+      ? demoRoutes.createForCustomer(record.customerId, record.method)
+      : demoRoutes.createWithMethod(record.method),
+  )
 
   const startRecording = () => {
     const recordingStartedAt = record.recordingStartedAt || formatDateTime(new Date())
@@ -90,12 +95,12 @@ export function RecordingPage({ recordId }: { recordId: string }) {
       setShowExitConfirm(true)
       return
     }
-    navigate(demoRoutes.create)
+    returnToCreation()
   }
   const exitRecording = () => {
     updateRecord(record.id, { recordingState: 'idle', durationSeconds: durationRef.current })
     setShowExitConfirm(false)
-    navigate(demoRoutes.create)
+    returnToCreation()
   }
 
   return (

@@ -3,6 +3,7 @@ import { mockRecords } from '../data/mockRecords'
 import { findMemberById, findMembersByPhone } from '../data/mockMembers'
 import { findMockStoreByName } from '../data/mockStores'
 import { mockCurrentEmployee } from '../data/mockStaff'
+import { createReceptionRecord } from '../data/createReceptionRecord'
 import { structuredContentLabels, type ReceptionRecord, type StructuredContent } from '../types/record'
 import type { Store } from '../types/store'
 
@@ -12,7 +13,7 @@ const demoAiSummaryEnabled = true
 type ReceptionRecordsContextValue = {
   records: ReceptionRecord[]
   getRecord: (recordId: string) => ReceptionRecord | undefined
-  createRecord: (method: ReceptionRecord['method'], store: Store) => ReceptionRecord
+  createRecord: (method: ReceptionRecord['method'], store: Store, preselectedCustomerId?: string) => ReceptionRecord | undefined
   updateRecord: (recordId: string, patch: Partial<ReceptionRecord>) => void
   startOrganizing: (recordId: string) => void
 }
@@ -57,6 +58,7 @@ function normalizeRecord(record: ReceptionRecord): ReceptionRecord {
   }
   return {
     ...record,
+    creationSource: record.creationSource ?? 'direct',
     storeId: record.storeId ?? mockFallback?.storeId ?? findMockStoreByName(record.storeName)?.id ?? 'guomao',
     creator: record.creator ?? mockFallback?.creator ?? record.receptionistName,
     submitter: normalizedStatus === 'draft' ? '' : record.submitter ?? mockFallback?.submitter ?? '',
@@ -104,44 +106,13 @@ export function ReceptionRecordsProvider({ children }: { children: ReactNode }) 
     [records],
   )
 
-  const createRecord = useCallback((method: ReceptionRecord['method'], store: Store) => {
-    const record: ReceptionRecord = {
-      id: `record-${Date.now()}`,
-      title: method === 'face-to-face' ? '新接待 · 面客模式' : '新接待 · 事后补录',
-      storeId: store.id,
-      storeName: store.name,
-      creator: mockCurrentEmployee.name,
-      submitter: '',
-      primaryReceptionist: mockCurrentEmployee.name,
-      coReceptionists: [],
-      receptionistName: mockCurrentEmployee.name,
-      receptionTime: '',
-      recordingStartedAt: '',
-      method,
-      recordingMethod: method,
-      status: 'draft',
-      customerBindingStatus: 'unbound',
-      transcriptionStatus: 'processing',
-      aiStatus: 'pending',
-      recordingState: 'idle',
-      organizingProgress: 0,
-      durationSeconds: 0,
-      customerInfo: { name: '', phone: '' },
-      customerName: '',
-      customerPhone: '',
-      customerRelationStatus: 'unbound',
-      transcript: [],
-      aiContent: {
-        summary: '客户提到肩颈酸痛和久坐情况，希望进一步了解适合自己的改善方式。',
-        customerProfile: '客户提及工作久坐，其他基础信息未提及。',
-        bodyCondition: '客户自述肩颈经常酸痛。',
-        customerNeeds: '希望改善久坐带来的肩颈不适，寻找适合自己的方式。',
-        intendedProject: '未明确提及。',
-        concerns: '未提及。',
-        communicationResult: '完成基础情况沟通，尚未形成具体预约。',
-        followUpSuggestion: '未明确提出后续安排。',
-      },
-    }
+  const createRecord = useCallback((method: ReceptionRecord['method'], store: Store, preselectedCustomerId?: string) => {
+    const preselectedMember = preselectedCustomerId
+      ? findMemberById(undefined, preselectedCustomerId)
+      : undefined
+    if (preselectedCustomerId && (!preselectedMember || preselectedMember.storeId !== store.id)) return undefined
+    const record = createReceptionRecord(method, store, mockCurrentEmployee.name, preselectedMember)
+    if (!record) return undefined
     setRecords((current) => [record, ...current])
     return record
   }, [])

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { MobileShell } from '../components/MobileShell'
-import { demoRoutes, navigate, submitSuccessNoticeKey } from '../routes'
+import { demoRoutes, navigate, recordFeedbackNoticeKey } from '../routes'
 import { RecordDetailPage } from './RecordDetailPage'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import { createMockMember, findMemberById, findMembersByPhone, updateMockMemberName, type Member } from '../data/mockMembers'
 import { mockCurrentEmployee, mockEmployeeReceptionistPermissionIds, mockReceptionists } from '../data/mockStaff'
 import { structuredContentLabels, type CustomerLookupStatus, type StructuredContent } from '../types/record'
 import { useStoreContext } from '../store/StoreContext'
+import { isPreselectedCustomerRelationIntact } from '../data/preselectedCustomer'
 
 const phonePattern = /^1[3-9]\d{9}$/
 
@@ -64,6 +65,19 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
 
   useEffect(() => {
     const phone = customerPhone.trim()
+    if (record?.creationSource === 'customer-list' && phone === record.customerInfo.phone) {
+      const selectedMember = findMemberById(record.memberId, record.customerId)
+      if (selectedMember && selectedMember.id === record.memberId && selectedMember.customerId === record.customerId) {
+        setMatchedMember(selectedMember)
+        setPhoneError('')
+        setLookupStatus('matched')
+        return
+      }
+      setMatchedMember(undefined)
+      setPhoneError('预选客户信息无法验证，请返回客户列表重新发起。')
+      setLookupStatus('error')
+      return
+    }
     setMatchedMember(undefined)
     setPhoneError('')
     if (!phone) {
@@ -97,7 +111,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
       }
     }, 520)
     return () => window.clearTimeout(timer)
-  }, [customerPhone])
+  }, [customerPhone, record?.id, record?.creationSource, record?.customerId, record?.customerInfo.phone, record?.memberId])
 
   if (!record) {
     return (
@@ -219,6 +233,11 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   }
 
   const ensureCanSave = (allowCurrentEdit = false) => {
+    if (!isPreselectedCustomerRelationIntact(record, matchedMember, customerName, customerPhone)) {
+      setEditNotice('当前记录已关联所选客户，本阶段暂不支持更换客户。请取消客户信息修改后继续；完整客户信息锁定将在后续阶段完善。')
+      setEditingCustomer(true)
+      return false
+    }
     if (!allowCurrentEdit && hasUnsavedEdit) {
       setEditNotice('当前卡片有未保存修改，请先点击当前卡片的“保存”或“取消”。')
       return false
@@ -293,15 +312,34 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
 
   const saveDraft = () => {
     if (!ensureCanSave()) return
-    updateRecord(record.id, { ...customerPatch(), status: 'draft' })
+    try {
+      updateRecord(record.id, { ...customerPatch(), status: 'draft' })
+    } catch {
+      setEditNotice('草稿保存失败，请稍后重试。')
+      return
+    }
+    try {
+      window.sessionStorage.setItem(recordFeedbackNoticeKey, JSON.stringify({ recordId: record.id, status: 'draft', createdAt: Date.now() }))
+    } catch {
+      // Keep the existing return-to-list behavior if browser storage is unavailable.
+    }
     navigate(demoRoutes.records)
   }
 
   const submitRecord = () => {
     if (!ensureCanSave()) return
+    try {
+      updateRecord(record.id, { ...customerPatch(), status: 'submitted', recordingState: 'idle', submitter: mockCurrentEmployee.name })
+    } catch {
+      setEditNotice('接待记录提交失败，请稍后重试。')
+      return
+    }
     isSubmittingRef.current = true
-    window.sessionStorage.setItem(submitSuccessNoticeKey, '1')
-    updateRecord(record.id, { ...customerPatch(), status: 'submitted', recordingState: 'idle', submitter: mockCurrentEmployee.name })
+    try {
+      window.sessionStorage.setItem(recordFeedbackNoticeKey, JSON.stringify({ recordId: record.id, status: 'submitted', createdAt: Date.now() }))
+    } catch {
+      // Keep the existing return-to-list behavior if browser storage is unavailable.
+    }
     navigate(demoRoutes.records)
   }
 

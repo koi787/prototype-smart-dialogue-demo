@@ -3,7 +3,7 @@ import { MobileShell } from '../components/MobileShell'
 import { RecordingFloatingWindow } from '../components/RecordingFloatingWindow'
 import { StatusTag } from '../components/StatusTag'
 import { mockTranscriptLines } from '../data/mockTranscript'
-import { demoRoutes, navigate, submitSuccessNoticeKey } from '../routes'
+import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import type { ReceptionRecord, RecordStatus } from '../types/record'
 import type { EmployeeStoreScenario } from '../types/store'
@@ -90,7 +90,6 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(listFilterMemory.time)
   const [isTimeSheetOpen, setTimeSheetOpen] = useState(false)
   const [isStoreSheetOpen, setStoreSheetOpen] = useState(false)
-  const [showSubmitToast, setShowSubmitToast] = useState(false)
   const [recordingConflictOpen, setRecordingConflictOpen] = useState(false)
   useEffect(() => {
     if (storeScenario) setScenario(storeScenario)
@@ -101,14 +100,6 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
     listFilterMemory.status = initialStatus
     setStatusFilter(initialStatus)
   }, [initialStatus])
-
-  useEffect(() => {
-    if (window.sessionStorage.getItem(submitSuccessNoticeKey) !== '1') return
-    window.sessionStorage.removeItem(submitSuccessNoticeKey)
-    setShowSubmitToast(true)
-    const timer = window.setTimeout(() => setShowSubmitToast(false), 3000)
-    return () => window.clearTimeout(timer)
-  }, [])
 
   const scopedRecords = useMemo(
     () => records.filter((record) => record.storeId === currentStore.id && matchesTime(record, timeFilter)),
@@ -300,7 +291,6 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
           </section>
         </div>
       )}
-      {showSubmitToast && <div className="mobile-toast mobile-toast--success" role="status" aria-live="polite"><span className="mobile-toast__icon" aria-hidden="true">✓</span><span>提交成功</span></div>}
     </MobileShell>
   )
 }

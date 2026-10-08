@@ -4,7 +4,8 @@ import { RecordingFloatingWindow } from '../components/RecordingFloatingWindow'
 import { mockMembers } from '../data/mockMembers'
 import { filterAssignedCustomers, getCustomerBusinessStatus, type CustomerDealFilter, type CustomerVisitFilter } from '../data/mockCustomerActivity'
 import { mockTranscriptLines } from '../data/mockTranscript'
-import { demoRoutes, navigate } from '../routes'
+import { getRecordFeedbackMessage, type RecordFeedbackNotice } from '../data/recordFeedback'
+import { demoRoutes, navigate, recordFeedbackNoticeKey } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import { useStoreContext } from '../store/StoreContext'
 import type { EmployeeStoreScenario } from '../types/store'
@@ -22,14 +23,48 @@ export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeSt
   const { accessibleStores, currentStore, selectStore, setScenario } = useStoreContext()
   const [storeSheetOpen, setStoreSheetOpen] = useState(false)
   const [recordingConflictOpen, setRecordingConflictOpen] = useState(false)
+  const [recordFeedbackMessage, setRecordFeedbackMessage] = useState('')
   const [query, setQuery] = useState('')
   const [visitFilter, setVisitFilter] = useState<CustomerVisitFilter>('all')
   const [dealFilter, setDealFilter] = useState<CustomerDealFilter>('all')
-  const [showReceptionNotice, setShowReceptionNotice] = useState(false)
 
   useEffect(() => {
     if (storeScenario) setScenario(storeScenario)
   }, [setScenario, storeScenario])
+
+  useEffect(() => {
+    const notice = window.sessionStorage.getItem(recordFeedbackNoticeKey)
+    if (!notice) return
+
+    try {
+      const payload = JSON.parse(notice) as Partial<RecordFeedbackNotice>
+      const record = records.find((item) => item.id === payload.recordId)
+      if (!record) {
+        window.sessionStorage.removeItem(recordFeedbackNoticeKey)
+        return
+      }
+      if (!payload.recordId || !payload.status || !payload.createdAt) {
+        window.sessionStorage.removeItem(recordFeedbackNoticeKey)
+        return
+      }
+      const message = getRecordFeedbackMessage(record, payload as RecordFeedbackNotice)
+      if (!message) {
+        if (!payload.createdAt || Date.now() - payload.createdAt > 5000) window.sessionStorage.removeItem(recordFeedbackNoticeKey)
+        return
+      }
+
+      window.sessionStorage.removeItem(recordFeedbackNoticeKey)
+      setRecordFeedbackMessage(message)
+    } catch {
+      window.sessionStorage.removeItem(recordFeedbackNoticeKey)
+    }
+  }, [records])
+
+  useEffect(() => {
+    if (!recordFeedbackMessage) return
+    const timer = window.setTimeout(() => setRecordFeedbackMessage(''), 2000)
+    return () => window.clearTimeout(timer)
+  }, [recordFeedbackMessage])
 
   const storeRecords = useMemo(() => records.filter((record) => record.storeId === currentStore.id), [currentStore.id, records])
   const counts = useMemo(() => ({
@@ -68,18 +103,12 @@ export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeSt
     return () => window.clearInterval(timer)
   }, [activeRecording?.id, activeRecording?.recordingState, records, updateRecord])
 
-  useEffect(() => {
-    if (!showReceptionNotice) return
-    const timer = window.setTimeout(() => setShowReceptionNotice(false), 2400)
-    return () => window.clearTimeout(timer)
-  }, [showReceptionNotice])
-
-  const handleCreate = () => {
+  const handleCreate = (preselectedCustomerId?: string) => {
     if (activeRecording) {
       setRecordingConflictOpen(true)
       return
     }
-    navigate(demoRoutes.create)
+    navigate(preselectedCustomerId ? demoRoutes.createForCustomer(preselectedCustomerId) : demoRoutes.create)
   }
 
   return (
@@ -87,7 +116,7 @@ export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeSt
       title="智能对话"
       onBack={() => navigate(demoRoutes.home)}
       backLabel="返回奥本中台"
-      fixedFooter={<button className="primary-button primary-button--large" type="button" onClick={handleCreate}>＋ 新建记录</button>}
+      fixedFooter={<button className="primary-button primary-button--large" type="button" onClick={() => handleCreate()}>＋ 新建记录</button>}
     >
       <div className="customer-home-store-row">
         <span>当前门店</span>
@@ -143,7 +172,7 @@ export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeSt
               </div>
               <div className="customer-home-row-bottom">
                 <span className="customer-home-statuses"><em className={status.visited ? 'is-on' : ''}>{status.visited ? '已到店' : '未到店'}</em><em className={status.converted ? 'is-on' : ''}>{status.converted ? '已成交' : '未成交'}</em></span>
-                <button className="customer-home-new-reception" type="button" onClick={() => setShowReceptionNotice(true)}><span>新增接待</span></button>
+                <button className="customer-home-new-reception" type="button" onClick={() => handleCreate(member.customerId)}><span>新增接待</span></button>
               </div>
             </article>
           })}
@@ -179,7 +208,8 @@ export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeSt
           <div className="recording-fixed-actions"><button className="secondary-button" type="button" onClick={() => setRecordingConflictOpen(false)}>取消</button><button className="primary-button primary-button--large" type="button" onClick={() => { setRecordingConflictOpen(false); navigate(demoRoutes.recording(activeRecording.id)) }}>返回当前录音</button></div>
         </section>
       </div>}
-      {showReceptionNotice && <div className="mobile-toast" role="status" aria-live="polite">客户预选接待入口暂未开放</div>}
+
+      {recordFeedbackMessage && <div className="mobile-toast mobile-toast--success" role="status" aria-live="polite"><span className="mobile-toast__icon" aria-hidden="true">✓</span><span>{recordFeedbackMessage}</span></div>}
     </MobileShell>
   )
 }

@@ -1,6 +1,7 @@
 import type { EmployeeStoreScenario } from './types/store'
+import type { RecordingMethod } from './types/record'
 
-export const submitSuccessNoticeKey = 'prototype-smart-dialogue-demo.submit-success'
+export const recordFeedbackNoticeKey = 'prototype-smart-dialogue-demo.record-feedback'
 
 export type DemoMode = 'mobile' | 'admin'
 
@@ -13,6 +14,8 @@ export const demoRoutes = {
   mobileMemberDetail: (memberId: string, tab?: 'follow-up', source?: 'records') => `#/member-center/members/${memberId}${tab || source ? `?${[tab ? 'tab=follow-up' : '', source ? 'from=records' : ''].filter(Boolean).join('&')}` : ''}`,
   mobileMemberDialogueDetail: (memberId: string, recordId: string) => `#/member-center/members/${memberId}/dialogue/${recordId}`,
   create: '#/records/new',
+  createWithMethod: (method: RecordingMethod) => `#/records/new?method=${method}`,
+  createForCustomer: (customerId: string, method?: RecordingMethod) => `#/records/new?customerId=${encodeURIComponent(customerId)}${method ? `&method=${method}` : ''}`,
   recording: (recordId: string) => `#/records/${recordId}/recording`,
   organizing: (recordId: string) => `#/records/${recordId}/organizing`,
   confirm: (recordId: string) => `#/records/${recordId}/confirm`,
@@ -33,7 +36,7 @@ export type AppRoute =
   | { kind: 'member-center'; initialPhone?: string }
   | { kind: 'mobile-member-detail'; memberId: string; initialTab?: 'follow-up'; backToRecords?: boolean }
   | { kind: 'mobile-member-dialogue-detail'; memberId: string; recordId: string }
-  | { kind: 'create' }
+  | { kind: 'create'; preselectedCustomerId?: string; initialMethod?: RecordingMethod }
   | { kind: 'recording'; recordId: string }
   | { kind: 'organizing'; recordId: string }
   | { kind: 'confirm'; recordId: string }
@@ -92,7 +95,13 @@ export function parseRoute(hash: string): AppRoute {
     return { kind: 'records', ...(employee === 'single' ? { storeScenario: 'single' as const } : {}) }
   }
   if (path === '/mobile/records') return { kind: 'records' }
-  if (path === '/records/new') return { kind: 'create' }
+  if (pathname === '/records/new') {
+    const params = new URLSearchParams(search)
+    const customerId = params.get('customerId') ?? undefined
+    const method = params.get('method')
+    const initialMethod = method === 'face-to-face' || method === 'afterwards' ? method : undefined
+    return { kind: 'create', ...(customerId ? { preselectedCustomerId: customerId } : {}), ...(initialMethod ? { initialMethod } : {}) }
+  }
   if (path === '/admin/records') return { kind: 'admin-records' }
   if (path === '/admin/dialogue-records') return { kind: 'admin-dialogue-records' }
   if (path === '/admin/member-center') return { kind: 'admin-customer-list' }

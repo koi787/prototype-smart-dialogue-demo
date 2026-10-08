@@ -3,17 +3,28 @@ import { MobileShell } from '../components/MobileShell'
 import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import { useStoreContext } from '../store/StoreContext'
+import { findMemberById } from '../data/mockMembers'
+import type { RecordingMethod } from '../types/record'
 
-type RecordingMethod = 'face-to-face' | 'afterwards'
-
-export function CreateRecordPage() {
+export function CreateRecordPage({ preselectedCustomerId, initialMethod }: { preselectedCustomerId?: string; initialMethod?: RecordingMethod }) {
   const { createRecord } = useReceptionRecords()
-  const { currentStore } = useStoreContext()
-  const [selectedMethod, setSelectedMethod] = useState<RecordingMethod | null>(null)
+  const { currentStore, accessibleStores } = useStoreContext()
+  const [selectedMethod, setSelectedMethod] = useState<RecordingMethod>(initialMethod ?? 'afterwards')
+  const [creationError, setCreationError] = useState('')
+  const preselectedMember = preselectedCustomerId ? findMemberById(undefined, preselectedCustomerId) : undefined
+  const invalidPreselection = Boolean(preselectedCustomerId) && (
+    !preselectedMember ||
+    preselectedMember.storeId !== currentStore.id ||
+    !accessibleStores.some((store) => store.id === currentStore.id)
+  )
 
   const startRecord = () => {
-    if (!selectedMethod) return
-    const record = createRecord(selectedMethod, currentStore)
+    if (!selectedMethod || invalidPreselection) return
+    const record = createRecord(selectedMethod, currentStore, preselectedCustomerId)
+    if (!record) {
+      setCreationError('所选客户不属于当前门店，无法创建接待记录。')
+      return
+    }
     navigate(demoRoutes.recording(record.id))
   }
 
@@ -22,7 +33,7 @@ export function CreateRecordPage() {
       title="新建记录"
       onBack={() => navigate(demoRoutes.records)}
       fixedFooter={
-        <button className="primary-button primary-button--large create-next-button" type="button" disabled={!selectedMethod} onClick={startRecord}>
+        <button className="primary-button primary-button--large create-next-button" type="button" disabled={!selectedMethod || invalidPreselection} onClick={startRecord}>
           下一步
         </button>
       }
@@ -30,6 +41,9 @@ export function CreateRecordPage() {
       <section className="page-section create-record-heading">
         <h2>这次接待属于哪种场景？</h2>
       </section>
+      {preselectedMember && !invalidPreselection && <p className="customer-lookup-helper">已选择客户：{preselectedMember.name}</p>}
+      {invalidPreselection && <p className="field-error" role="alert">所选客户无效或不属于当前门店，请返回客户列表重新选择。</p>}
+      {creationError && <p className="field-error" role="alert">{creationError}</p>}
 
       <div className="method-list">
         <button className={selectedMethod === 'afterwards' ? 'method-card method-card--selected' : 'method-card'} type="button" onClick={() => setSelectedMethod('afterwards')}>
