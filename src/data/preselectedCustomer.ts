@@ -1,13 +1,17 @@
 import type { Member } from './mockMembers'
 import type { ReceptionRecord } from '../types/record'
 
+export function canEditCustomerInformation(record: ReceptionRecord) {
+  return record.creationSource !== 'customer-list'
+}
+
 export function isPreselectedCustomerRelationIntact(
   record: ReceptionRecord,
   matchedMember: Member | undefined,
   customerName: string,
   customerPhone: string,
 ) {
-  if (record.creationSource !== 'customer-list') return true
+  if (canEditCustomerInformation(record)) return true
 
   return Boolean(
     record.memberId &&

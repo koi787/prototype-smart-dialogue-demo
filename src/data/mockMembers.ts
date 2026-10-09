@@ -142,6 +142,27 @@ export function findMembersByPhone(phone: string) {
   return mockMembers.filter((member) => member.phone === phone)
 }
 
+export function searchMembers(query: string, candidates: Member[]) {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  if (!normalizedQuery) return []
+
+  const isPhoneQuery = /^[+\d\s()-]+$/.test(normalizedQuery)
+  const phoneDigits = normalizedQuery.replace(/\D/g, '')
+  const matchFullPhone = isPhoneQuery && phoneDigits.length === 11
+  const matchPhoneSuffix = isPhoneQuery && phoneDigits.length === 4
+
+  return candidates.filter((member) => {
+    const nameMatches = member.name.toLocaleLowerCase().includes(normalizedQuery)
+    const phoneMatches = (matchFullPhone && member.phone === phoneDigits)
+      || (matchPhoneSuffix && member.phone.endsWith(phoneDigits))
+    return nameMatches || phoneMatches
+  })
+}
+
+export function isMemberInCandidateSet(member: Member, candidates: Member[]) {
+  return candidates.some((candidate) => candidate.id === member.id && candidate.customerId === member.customerId)
+}
+
 export function createMockMember(name: string, phone: string) {
   const idSuffix = Date.now()
   const member: Member = {

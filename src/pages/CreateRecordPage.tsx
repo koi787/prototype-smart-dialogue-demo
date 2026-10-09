@@ -39,9 +39,8 @@ export function CreateRecordPage({ preselectedCustomerId, initialMethod }: { pre
       }
     >
       <section className="page-section create-record-heading">
-        <h2>这次接待属于哪种场景？</h2>
+        <h2>选择场景</h2>
       </section>
-      {preselectedMember && !invalidPreselection && <p className="customer-lookup-helper">已选择客户：{preselectedMember.name}</p>}
       {invalidPreselection && <p className="field-error" role="alert">所选客户无效或不属于当前门店，请返回客户列表重新选择。</p>}
       {creationError && <p className="field-error" role="alert">{creationError}</p>}
 

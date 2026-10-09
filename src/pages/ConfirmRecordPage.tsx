@@ -1,22 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MobileShell } from '../components/MobileShell'
 import { demoRoutes, navigate, recordFeedbackNoticeKey } from '../routes'
 import { RecordDetailPage } from './RecordDetailPage'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
-import { createMockMember, findMemberById, findMembersByPhone, updateMockMemberName, type Member } from '../data/mockMembers'
+import { findMemberById, isMemberInCandidateSet, mockMembers, searchMembers, type Member } from '../data/mockMembers'
+import { filterAssignedCustomers } from '../data/mockCustomerActivity'
 import { mockCurrentEmployee, mockEmployeeReceptionistPermissionIds, mockReceptionists } from '../data/mockStaff'
-import { structuredContentLabels, type CustomerLookupStatus, type StructuredContent } from '../types/record'
+import { structuredContentLabels, type StructuredContent } from '../types/record'
 import { useStoreContext } from '../store/StoreContext'
-import { isPreselectedCustomerRelationIntact } from '../data/preselectedCustomer'
-
-const phonePattern = /^1[3-9]\d{9}$/
-
-function lookupStatusMessage(status: CustomerLookupStatus) {
-  if (status === 'querying') return '正在查询客户...'
-  if (status === 'not-found') return '未查询到该客户，保存后将新增客户信息。'
-  if (status === 'ambiguous' || status === 'error') return '客户查询异常，请稍后重试'
-  return ''
-}
+import { canEditCustomerInformation, isPreselectedCustomerRelationIntact } from '../data/preselectedCustomer'
 
 function toDatetimeLocal(value: string) {
   return value ? value.replace(' ', 'T').slice(0, 16) : ''
@@ -26,9 +18,13 @@ function fromDatetimeLocal(value: string) {
   return value.replace('T', ' ')
 }
 
+function maskPhone(phone: string) {
+  return phone.length === 11 ? `${phone.slice(0, 3)}****${phone.slice(-4)}` : phone
+}
+
 export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   const { getRecord, updateRecord } = useReceptionRecords()
-  const { accessibleStores } = useStoreContext()
+  const { accessibleStores, currentStore } = useStoreContext()
   const record = getRecord(recordId)
   const availableReceptionists = mockReceptionists.filter((teacher) => mockEmployeeReceptionistPermissionIds.includes(teacher.id))
   const [editingReceptionInfo, setEditingReceptionInfo] = useState(false)
@@ -41,14 +37,18 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
-  const [phoneError, setPhoneError] = useState('')
-  const [lookupStatus, setLookupStatus] = useState<CustomerLookupStatus>('empty')
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('')
+  const [customerSelectionError, setCustomerSelectionError] = useState('')
   const [matchedMember, setMatchedMember] = useState<Member | undefined>()
   const [editingModuleKey, setEditingModuleKey] = useState<keyof StructuredContent | null>(null)
   const [moduleDraft, setModuleDraft] = useState('')
   const [editNotice, setEditNotice] = useState('')
   const isSubmittingRef = useRef(false)
   const coCandidates = availableReceptionists.filter((teacher) => teacher.name !== primaryReceptionist && !coReceptionists.includes(teacher.name) && teacher.name.includes(coSearch.trim()))
+  const currentStoreMembers = useMemo(
+    () => filterAssignedCustomers(mockMembers, { storeId: currentStore.id }),
+    [currentStore.id],
+  )
 
   useEffect(() => {
     if (!record) return
@@ -60,58 +60,44 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
     setReceptionTime(toDatetimeLocal(record.receptionTime))
     setCustomerName(record.customerInfo.name)
     setCustomerPhone(record.customerInfo.phone)
-    setMatchedMember(findMemberById(record.memberId, record.customerId))
+    const member = findMemberById(record.memberId, record.customerId)
+    const relationIsBound = record.customerBindingStatus === 'bound'
+      && Boolean(member)
+      && member?.id === record.memberId
+      && member?.customerId === record.customerId
+      && member?.name === record.customerInfo.name
+      && member?.phone === record.customerInfo.phone
+    setMatchedMember(relationIsBound ? member : undefined)
+    setCustomerSelectionError('')
+    setCustomerSearchQuery('')
   }, [record?.id])
 
   useEffect(() => {
-    const phone = customerPhone.trim()
-    if (record?.creationSource === 'customer-list' && phone === record.customerInfo.phone) {
-      const selectedMember = findMemberById(record.memberId, record.customerId)
-      if (selectedMember && selectedMember.id === record.memberId && selectedMember.customerId === record.customerId) {
-        setMatchedMember(selectedMember)
-        setPhoneError('')
-        setLookupStatus('matched')
-        return
-      }
-      setMatchedMember(undefined)
-      setPhoneError('预选客户信息无法验证，请返回客户列表重新发起。')
-      setLookupStatus('error')
+    if (!record || record.creationSource !== 'customer-list') return
+    const selectedMember = findMemberById(record.memberId, record.customerId)
+    if (isPreselectedCustomerRelationIntact(record, selectedMember, record.customerInfo.name, record.customerInfo.phone)) {
+      setMatchedMember(selectedMember)
+      setCustomerName(record.customerInfo.name)
+      setCustomerPhone(record.customerInfo.phone)
+      setCustomerSelectionError('')
       return
     }
     setMatchedMember(undefined)
-    setPhoneError('')
-    if (!phone) {
-      setLookupStatus('empty')
-      return
-    }
-    if (!phonePattern.test(phone)) {
-      setLookupStatus('invalid')
-      setPhoneError('请输入正确的手机号，或清空后继续')
-      return
-    }
+    setCustomerSelectionError('预选客户信息无法验证，请返回客户列表重新发起。')
+  }, [record?.id])
 
-    setPhoneError('')
-    setLookupStatus('querying')
-    const timer = window.setTimeout(() => {
-      try {
-        const matches = findMembersByPhone(phone)
-        if (matches.length === 1) {
-          setMatchedMember(matches[0])
-          setCustomerName(matches[0].name)
-          setLookupStatus('matched')
-          return
-        }
-        if (matches.length > 1) {
-          setLookupStatus('ambiguous')
-          return
-        }
-        setLookupStatus('not-found')
-      } catch {
-        setLookupStatus('error')
-      }
-    }, 520)
-    return () => window.clearTimeout(timer)
-  }, [customerPhone, record?.id, record?.creationSource, record?.customerId, record?.customerInfo.phone, record?.memberId])
+  useEffect(() => {
+    if (!record || !editingCustomer || !matchedMember) return
+    const isPersistedRelation = record.customerBindingStatus === 'bound'
+      && matchedMember.id === record.memberId
+      && matchedMember.customerId === record.customerId
+    if (isPersistedRelation || isMemberInCandidateSet(matchedMember, currentStoreMembers)) return
+
+    setMatchedMember(undefined)
+    setCustomerName('')
+    setCustomerPhone('')
+    setCustomerSelectionError('当前门店已切换，请重新搜索并选择客户。')
+  }, [currentStoreMembers, editingCustomer, matchedMember, record])
 
   if (!record) {
     return (
@@ -124,10 +110,15 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   if (record.status === 'submitted' && !isSubmittingRef.current) return <RecordDetailPage recordId={record.id} />
 
   const methodLabel = record.method === 'face-to-face' ? '面客模式' : '事后补录'
+  const customerInformationEditable = canEditCustomerInformation(record)
   const selectedReceptionStore = accessibleStores.find((store) => store.id === receptionStoreId)
-  const validPhone = phonePattern.test(customerPhone.trim())
-  const lookupInProgress = lookupStatus === 'querying'
-  const customerDirty = editingCustomer && (customerName !== record.customerInfo.name || customerPhone !== record.customerInfo.phone)
+  const customerDirty = editingCustomer && (
+    customerName !== record.customerInfo.name
+    || customerPhone !== record.customerInfo.phone
+    || matchedMember?.id !== record.memberId
+    || matchedMember?.customerId !== record.customerId
+  )
+  const customerSearchResults = searchMembers(customerSearchQuery, currentStoreMembers)
   const moduleDirty = editingModuleKey !== null && moduleDraft !== record.aiContent[editingModuleKey]
   const receptionInfoDirty = editingReceptionInfo && (
     receptionStoreId !== record.storeId ||
@@ -147,12 +138,15 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   }
 
   const openCustomerEdit = () => {
+    if (!customerInformationEditable) return
     if (!canSwitchEditTarget()) return
     setEditingCustomer(true)
     setEditingReceptionInfo(false)
     setEditingModuleKey(null)
     setCoSearchOpen(false)
     setCoSearch('')
+    setCustomerSearchQuery('')
+    setCustomerSelectionError('')
     setEditNotice('')
   }
 
@@ -180,9 +174,37 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   const cancelCustomerEdit = () => {
     setCustomerName(record.customerInfo.name)
     setCustomerPhone(record.customerInfo.phone)
-    setPhoneError('')
+    setMatchedMember(findMemberById(record.memberId, record.customerId))
+    setCustomerSearchQuery('')
+    setCustomerSelectionError('')
     setEditingCustomer(false)
     setEditNotice('')
+  }
+
+  const searchForCustomer = (query: string) => {
+    setCustomerSearchQuery(query)
+    setCustomerSelectionError('')
+    if (query !== customerSearchQuery) {
+      setMatchedMember(undefined)
+      setCustomerName('')
+      setCustomerPhone('')
+    }
+  }
+
+  const selectCustomer = (member: Member) => {
+    const allowedMember = currentStoreMembers.find((candidate) => candidate.id === member.id && candidate.customerId === member.customerId)
+    if (!allowedMember || !isMemberInCandidateSet(member, currentStoreMembers)) {
+      setMatchedMember(undefined)
+      setCustomerName('')
+      setCustomerPhone('')
+      setCustomerSelectionError('该客户不属于当前门店，无法选择。')
+      return
+    }
+    setMatchedMember(allowedMember)
+    setCustomerName(allowedMember.name)
+    setCustomerPhone(allowedMember.phone)
+    setCustomerSearchQuery('')
+    setCustomerSelectionError('')
   }
 
   const cancelReceptionInfoEdit = () => {
@@ -242,33 +264,21 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
       setEditNotice('当前卡片有未保存修改，请先点击当前卡片的“保存”或“取消”。')
       return false
     }
-    if (!validPhone) {
-      setPhoneError(customerPhone.trim() ? '请输入正确的手机号，或清空后继续' : '请输入手机号')
+    if (!matchedMember || !matchedMember.id || !matchedMember.customerId) {
+      setCustomerSelectionError('请搜索并选择客户后继续。')
       setEditingCustomer(true)
       return false
     }
-    if (lookupInProgress) {
-      setPhoneError('正在查询客户，请稍候')
+    if (!matchedMember.name.trim() || !matchedMember.phone.trim()) {
+      setCustomerSelectionError('所选客户信息不完整，请重新选择客户。')
       setEditingCustomer(true)
       return false
     }
-    if (lookupStatus === 'ambiguous' || lookupStatus === 'error') {
-      setPhoneError(lookupStatusMessage(lookupStatus))
-      setEditingCustomer(true)
-      return false
-    }
-    if (lookupStatus !== 'matched' && lookupStatus !== 'not-found') {
-      setPhoneError('请先完成客户查询')
-      setEditingCustomer(true)
-      return false
-    }
-    if (!customerName.trim()) {
-      setPhoneError('请输入客户姓名')
-      setEditingCustomer(true)
-      return false
-    }
-    if (!allowCurrentEdit && (!matchedMember || lookupStatus !== 'matched')) {
-      setEditNotice('请先保存客户信息，完成用户关联。')
+    const isPersistedRelation = record.customerBindingStatus === 'bound'
+      && matchedMember.id === record.memberId
+      && matchedMember.customerId === record.customerId
+    if (!isPersistedRelation && !isMemberInCandidateSet(matchedMember, currentStoreMembers)) {
+      setCustomerSelectionError('所选客户不属于当前门店，请重新搜索并选择。')
       setEditingCustomer(true)
       return false
     }
@@ -277,11 +287,11 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
 
   const customerPatch = (member = matchedMember) => ({
     customerInfo: {
-      name: customerName.trim(),
-      phone: customerPhone.trim(),
+      name: member?.name ?? customerName.trim(),
+      phone: member?.phone ?? customerPhone.trim(),
     },
-    customerName: customerName.trim(),
-    customerPhone: customerPhone.trim(),
+    customerName: member?.name ?? customerName.trim(),
+    customerPhone: member?.phone ?? customerPhone.trim(),
     customerBindingStatus: 'bound' as const,
     customerRelationStatus: 'bound' as const,
     memberId: member?.id,
@@ -289,24 +299,19 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   })
 
   const saveCustomer = () => {
+    if (!customerInformationEditable) return
     if (!ensureCanSave(true)) return
-    let member = matchedMember
-    if (!member && lookupStatus === 'not-found') {
-      member = createMockMember(customerName.trim(), customerPhone.trim())
-    }
+    const member = matchedMember
     if (!member) {
-      setPhoneError('客户查询未完成，请稍后重试')
+      setCustomerSelectionError('请搜索并选择客户后继续。')
       return
-    }
-    if (lookupStatus === 'matched' && customerName.trim() !== member.name) {
-      member = updateMockMemberName(member.id, customerName.trim()) ?? member
     }
     setMatchedMember(member)
     setCustomerName(member.name)
-    setLookupStatus('matched')
+    setCustomerPhone(member.phone)
     updateRecord(record.id, { ...customerPatch(member), status: 'draft' })
     setEditingCustomer(false)
-    setPhoneError('')
+    setCustomerSelectionError('')
     setEditNotice('')
   }
 
@@ -349,8 +354,8 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
       onBack={() => navigate(demoRoutes.records)}
       fixedFooter={
         <div className="confirm-actions">
-          <button className="secondary-button" type="button" disabled={lookupInProgress} onClick={saveDraft}>保存草稿</button>
-          <button className="primary-button primary-button--large" type="button" disabled={lookupInProgress} onClick={submitRecord}>确认提交</button>
+          <button className="secondary-button" type="button" onClick={saveDraft}>保存草稿</button>
+          <button className="primary-button primary-button--large" type="button" onClick={submitRecord}>确认提交</button>
         </div>
       }
     >
@@ -401,22 +406,36 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
       </section>
 
       <section className="info-card customer-edit-card">
-        <div className="info-card__heading"><h3>客户信息</h3>{!editingCustomer && <button className="inline-action" type="button" onClick={openCustomerEdit}>编辑</button>}</div>
-        {editingCustomer ? (
+        <div className="info-card__heading"><h3>客户信息</h3>{customerInformationEditable && !editingCustomer && <button className="inline-action" type="button" onClick={openCustomerEdit}>编辑</button>}</div>
+        {editingCustomer && customerInformationEditable ? (
           <div className="customer-form">
-            <label>手机号（必填）<input inputMode="numeric" value={customerPhone} onChange={(event) => { const nextPhone = event.target.value; setCustomerPhone(nextPhone); setPhoneError(''); if (nextPhone !== customerPhone && (Boolean(matchedMember) || lookupStatus !== 'empty' || Boolean(customerName))) { setMatchedMember(undefined); setCustomerName(''); setLookupStatus('empty') } }} placeholder="请输入手机号" /></label>
-            {lookupStatus === 'matched' && matchedMember && (
-              <div className="customer-lookup-state customer-lookup-state--matched"><strong>✓ 客户已存在</strong></div>
+            <label>搜索客户<input aria-label="搜索客户姓名或手机号" autoComplete="off" value={customerSearchQuery} onChange={(event) => searchForCustomer(event.target.value)} placeholder="搜索客户姓名 / 手机号" /></label>
+            {customerSearchQuery.trim() && (
+              <div className="customer-search-results" role="listbox" aria-label="匹配客户列表">
+                {customerSearchResults.map((member) => (
+                  <button
+                    className="customer-search-result"
+                    type="button"
+                    role="option"
+                    aria-selected={matchedMember?.id === member.id}
+                    key={member.id}
+                    onClick={() => selectCustomer(member)}
+                  >
+                    <strong>{member.name}</strong><span>{maskPhone(member.phone)}</span>
+                  </button>
+                ))}
+                {customerSearchResults.length === 0 && <p className="customer-search-empty">暂无匹配客户</p>}
+              </div>
             )}
-            {(lookupStatus === 'querying' || lookupStatus === 'ambiguous' || lookupStatus === 'error') && (
-              <div className={`customer-lookup-state customer-lookup-state--${lookupStatus}`}><span>{lookupStatusMessage(lookupStatus)}</span></div>
+            {matchedMember && (
+              <div className="customer-search-selected">
+                <span>已选择客户</span>
+                <strong>{matchedMember.name}</strong>
+                <span>{maskPhone(matchedMember.phone)}</span>
+              </div>
             )}
-            {lookupStatus === 'invalid' && <p className="field-error">请输入正确的手机号，或清空后继续</p>}
-            <label>姓名（必填）<input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder={lookupStatus === 'matched' || lookupStatus === 'not-found' ? '请输入客户姓名' : '请先输入手机号'} disabled={lookupStatus !== 'matched' && lookupStatus !== 'not-found'} /></label>
-            {lookupStatus === 'matched' && matchedMember && customerName.trim() !== matchedMember.name && <p className="customer-lookup-helper">姓名已修改，保存后将同步更新客户信息。</p>}
-            {lookupStatus === 'not-found' && <p className="customer-lookup-helper">未查询到该客户，保存后将新增客户信息。</p>}
-            {phoneError && lookupStatus !== 'invalid' && <p className="field-error">{phoneError}</p>}
-            <div className="inline-actions"><button className="text-button" type="button" onClick={cancelCustomerEdit}>取消</button><button className="small-primary-button" type="button" disabled={lookupInProgress} onClick={saveCustomer}>保存</button></div>
+            {customerSelectionError && <p className="field-error" role="alert">{customerSelectionError}</p>}
+            <div className="inline-actions"><button className="text-button" type="button" onClick={cancelCustomerEdit}>取消</button><button className="small-primary-button" type="button" onClick={saveCustomer}>保存</button></div>
           </div>
         ) : (
           <>
@@ -424,8 +443,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
               <div><dt>手机号</dt><dd>{customerPhone || '未填写'}</dd></div>
               <div><dt>姓名</dt><dd>{customerName || '未填写'}</dd></div>
             </dl>
-            {record.customerBindingStatus === 'bound' ? <div className="customer-lookup-state customer-lookup-state--matched"><strong>✓ 客户已关联</strong></div> : lookupStatus === 'not-found' ? <p className="customer-lookup-helper">未查询到该客户，保存后将新增客户信息。</p> : lookupStatus !== 'empty' && lookupStatus !== 'invalid' && <div className={`customer-lookup-state customer-lookup-state--${lookupStatus}`}><span>{lookupStatusMessage(lookupStatus)}</span></div>}
-            {lookupStatus === 'invalid' && <p className="field-error">请输入正确的手机号，或清空后继续</p>}
+            {record.customerBindingStatus === 'bound' ? <div className="customer-lookup-state customer-lookup-state--matched"><strong>✓ 客户已关联</strong></div> : <p className="customer-lookup-helper">尚未关联客户</p>}
           </>
         )}
       </section>
