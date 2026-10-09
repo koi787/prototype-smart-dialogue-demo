@@ -2,12 +2,8 @@ import { useMemo, useState } from 'react'
 import { AdminShell } from '../components/AdminShell'
 import { AdminDialogueDetailDrawer } from './AdminDialogueDetailPage'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
-import {
-  formatBindingStatus,
-  getBindingStatus,
-  type DialogueBindingStatus,
-} from '../data/dialogueRecordView'
 import type { RecordingMethod } from '../types/record'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 
 type FilterValue = 'all'
 type ReceptionDateFilter = 'last-7-days' | 'last-30-days' | 'last-90-days' | 'custom' | FilterValue
@@ -20,7 +16,6 @@ type AdminFilters = {
   receptionist: string
   method: FilterValue | RecordingMethod
   phone: string
-  bindingStatus: FilterValue | DialogueBindingStatus
 }
 
 const allOption: FilterValue = 'all'
@@ -33,17 +28,25 @@ const emptyFilters: AdminFilters = {
   receptionist: allOption,
   method: allOption,
   phone: '',
-  bindingStatus: allOption,
 }
 
-const demoToday = '2026-09-15'
+function localDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 function isReceptionDateInRange(receptionTime: string, filters: AdminFilters) {
   const date = receptionTime.slice(0, 10)
   if (filters.receptionDate === 'all') return true
-  if (filters.receptionDate === 'last-7-days') return date >= '2026-09-09' && date <= demoToday
-  if (filters.receptionDate === 'last-30-days') return date >= '2026-08-17' && date <= demoToday
-  if (filters.receptionDate === 'last-90-days') return date >= '2026-06-18' && date <= demoToday
+  if (filters.receptionDate !== 'custom') {
+    const days = filters.receptionDate === 'last-7-days' ? 7 : filters.receptionDate === 'last-30-days' ? 30 : 90
+    const endDate = new Date()
+    const startDate = new Date(endDate)
+    startDate.setDate(startDate.getDate() - (days - 1))
+    return date >= localDateValue(startDate) && date <= localDateValue(endDate)
+  }
   return (!filters.customStartDate || date >= filters.customStartDate) && (!filters.customEndDate || date <= filters.customEndDate)
 }
 
@@ -64,10 +67,6 @@ function formatCoReceptionists(names: string[]) {
   return `${names[0]}等${names.length}人`
 }
 
-function StatusPill({ label, tone }: { label: string; tone: string }) {
-  return <span className={`admin-status-pill admin-status-pill--${tone}`}>{label}</span>
-}
-
 export function AdminDialogueRecordsPage({ initialRecordId }: { initialRecordId?: string }) {
   const { records } = useReceptionRecords()
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(initialRecordId ?? null)
@@ -85,14 +84,12 @@ export function AdminDialogueRecordsPage({ initialRecordId }: { initialRecordId?
   const receptionists = useMemo(() => [...new Set(submittedRecords.map((record) => record.primaryReceptionist || record.receptionistName))], [submittedRecords])
 
   const visibleRecords = useMemo(() => submittedRecords.filter((record) => {
-    const binding = getBindingStatus(record)
     return (
       isReceptionDateInRange(record.receptionTime, appliedFilters) &&
       (appliedFilters.store === allOption || record.storeName === appliedFilters.store) &&
       (appliedFilters.receptionist === allOption || (record.primaryReceptionist || record.receptionistName) === appliedFilters.receptionist) &&
       (appliedFilters.method === allOption || record.method === appliedFilters.method) &&
-      (!appliedFilters.phone || record.customerInfo.phone.includes(appliedFilters.phone)) &&
-      (appliedFilters.bindingStatus === allOption || binding === appliedFilters.bindingStatus)
+      (!appliedFilters.phone || record.customerInfo.phone.includes(appliedFilters.phone))
     )
   }), [appliedFilters, submittedRecords])
 
@@ -209,7 +206,6 @@ export function AdminDialogueRecordsPage({ initialRecordId }: { initialRecordId?
           <label>主接待人<select value={draftFilters.receptionist} onChange={(event) => updateFilter('receptionist', event.target.value)}><option value="all">全部接待人</option>{receptionists.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
           <label>记录方式<select value={draftFilters.method} onChange={(event) => updateFilter('method', event.target.value as AdminFilters['method'])}><option value="all">全部方式</option><option value="face-to-face">面客模式</option><option value="afterwards">事后补录</option></select></label>
           <label>客户手机号<input value={draftFilters.phone} onChange={(event) => updateFilter('phone', event.target.value)} inputMode="numeric" placeholder="请输入手机号" /></label>
-          <label>客户关联状态<select value={draftFilters.bindingStatus} onChange={(event) => updateFilter('bindingStatus', event.target.value as AdminFilters['bindingStatus'])}><option value="all">全部状态</option><option value="bound">已关联</option><option value="unbound">未关联</option></select></label>
         </div>
         <div className="admin-filter-actions">
           <button className="admin-secondary-button" type="button" onClick={resetFilters}>重置</button>
@@ -224,24 +220,20 @@ export function AdminDialogueRecordsPage({ initialRecordId }: { initialRecordId?
         ) : (
           <div className="admin-table-scroll">
             <table className="admin-record-table">
-              <thead><tr><th>接待时间</th><th>客户姓名</th><th>客户手机号</th><th>客户关联状态</th><th>门店</th><th>主接待人</th><th>协同接待人</th><th>记录方式</th><th>操作</th></tr></thead>
+              <thead><tr><th>接待时间</th><th>客户姓名</th><th>客户手机号</th><th>门店</th><th>主接待人</th><th>协同接待人</th><th>记录方式</th><th>操作</th></tr></thead>
               <tbody>
-                {visibleRecords.map((record) => {
-                  const binding = getBindingStatus(record)
-                  return (
+                {visibleRecords.map((record) => (
                     <tr key={record.id}>
                       <td className="admin-table-time">{record.receptionTime}</td>
                       <td className="admin-table-strong">{record.customerInfo.name || '--'}</td>
-                      <td>{record.customerInfo.phone || '--'}</td>
-                      <td><StatusPill label={formatBindingStatus(binding)} tone={binding} /></td>
+                      <td>{formatMaskedPhone(record.customerPhone || record.customerInfo.phone)}</td>
                       <td>{record.storeName}</td>
                       <td>{record.primaryReceptionist || record.receptionistName || '--'}</td>
                       <td>{formatCoReceptionists(record.coReceptionists)}</td>
                       <td>{record.method === 'face-to-face' ? '面客模式' : '事后补录'}</td>
                       <td><button className="admin-view-button" type="button" onClick={() => setSelectedRecordId(record.id)}>查看</button></td>
                     </tr>
-                  )
-                })}
+                ))}
               </tbody>
             </table>
           </div>

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { AdminShell } from '../components/AdminShell'
 import { AdminMemberDetailDrawer } from './AdminMemberDetailPage'
 import { mockMembers } from '../data/mockMembers'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 
 export function AdminCustomerListPage({ initialMemberId }: { initialMemberId?: string } = {}) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(initialMemberId ?? null)
@@ -29,7 +30,7 @@ export function AdminCustomerListPage({ initialMemberId }: { initialMemberId?: s
                   <td className="admin-table-time">{member.id}</td>
                   <td><span className="customer-table__avatar">{member.name.slice(0, 1)}</span></td>
                   <td className="admin-table-strong">{member.name}</td>
-                  <td>{member.phone}</td>
+                  <td>{formatMaskedPhone(member.phone, '手机号未填写')}</td>
                   <td>{member.source ?? '--'}</td>
                   <td>{member.membershipLabel}</td>
                   <td><button className="admin-view-button" type="button" onClick={() => setSelectedMemberId(member.id)}>查看详情</button></td>

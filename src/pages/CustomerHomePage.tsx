@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { MobileShell } from '../components/MobileShell'
 import { RecordingFloatingWindow } from '../components/RecordingFloatingWindow'
 import { mockMembers } from '../data/mockMembers'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 import { filterAssignedCustomers, getCustomerBusinessStatus, type CustomerDealFilter, type CustomerVisitFilter } from '../data/mockCustomerActivity'
 import { mockTranscriptLines } from '../data/mockTranscript'
 import { getRecordFeedbackMessage, type RecordFeedbackNotice } from '../data/recordFeedback'
@@ -12,10 +13,6 @@ import type { EmployeeStoreScenario } from '../types/store'
 
 function countLabel(count: number) {
   return count > 99 ? '99+' : String(count)
-}
-
-function maskPhone(phone: string) {
-  return phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2')
 }
 
 export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeStoreScenario }) {
@@ -128,10 +125,6 @@ export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeSt
       <section className="customer-home-record-panel" aria-labelledby="customer-home-records-title">
         <div className="customer-home-section-heading">
           <h2 id="customer-home-records-title">接待记录</h2>
-          <button className="customer-home-history" type="button" onClick={() => navigate(demoRoutes.recordHistory())}>
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.1 6.4A6.7 6.7 0 1 1 3.4 10M4.1 3.7v3.1h3.1M10 6.1v4.2l2.7 1.6" /></svg>
-            <span>历史记录</span><b aria-hidden="true">›</b>
-          </button>
         </div>
         <div className="customer-home-counts">
           <button type="button" onClick={() => navigate(demoRoutes.recordHistory('all'))}><small>全部</small><strong>{countLabel(counts.all)}</strong></button>
@@ -166,14 +159,28 @@ export function CustomerHomePage({ storeScenario }: { storeScenario?: EmployeeSt
           {customers.length === 0 ? <div className="customer-home-empty">没有符合条件的客户<button type="button" onClick={() => { setQuery(''); setVisitFilter('all'); setDealFilter('all') }}>重置筛选</button></div> : customers.map((member) => {
             const status = getCustomerBusinessStatus(member.customerId)
             return <article className="customer-home-row" key={member.customerId}>
-              <div className="customer-home-row-top">
-                <div className="customer-home-identity"><strong>{member.name}</strong><small>{maskPhone(member.phone)}</small></div>
-                <button className="customer-home-detail-link" type="button" onClick={() => navigate(demoRoutes.mobileMemberDetail(member.id, undefined, 'records'))}>客户详情 <span aria-hidden="true">›</span></button>
+              <div className="customer-home-row-info">
+                <div className="customer-home-row-top">
+                  <strong className="customer-home-name">{member.name}</strong>
+                  <button className="customer-home-detail-link" type="button" onClick={() => navigate(demoRoutes.mobileMemberDetail(member.id, undefined, 'records'))}>客户详情 <span aria-hidden="true">›</span></button>
+                </div>
+                <small className="customer-home-phone">{formatMaskedPhone(member.phone, '手机号未填写')}</small>
+                <div className="customer-home-row-bottom">
+                  <span className="customer-home-statuses"><em className={status.visited ? 'is-on' : ''}>{status.visited ? '已到店' : '未到店'}</em><em className={status.converted ? 'is-on' : ''}>{status.converted ? '已成交' : '未成交'}</em></span>
+                </div>
               </div>
-              <div className="customer-home-row-bottom">
-                <span className="customer-home-statuses"><em className={status.visited ? 'is-on' : ''}>{status.visited ? '已到店' : '未到店'}</em><em className={status.converted ? 'is-on' : ''}>{status.converted ? '已成交' : '未成交'}</em></span>
-                <button className="customer-home-new-reception" type="button" onClick={() => handleCreate(member.customerId)}><span>新增接待</span></button>
-              </div>
+              <button
+                className="customer-home-new-reception"
+                type="button"
+                aria-label={`为${member.name}新增接待`}
+                title={`为${member.name}新增接待`}
+                onClick={() => handleCreate(member.customerId)}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                  <path d="M12 8v6m-3-3h6" />
+                </svg>
+              </button>
             </article>
           })}
         </div>

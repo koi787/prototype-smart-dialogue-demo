@@ -9,6 +9,7 @@ import { mockCurrentEmployee, mockEmployeeReceptionistPermissionIds, mockRecepti
 import { structuredContentLabels, type StructuredContent } from '../types/record'
 import { useStoreContext } from '../store/StoreContext'
 import { canEditCustomerInformation, isPreselectedCustomerRelationIntact } from '../data/preselectedCustomer'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 
 function toDatetimeLocal(value: string) {
   return value ? value.replace(' ', 'T').slice(0, 16) : ''
@@ -16,10 +17,6 @@ function toDatetimeLocal(value: string) {
 
 function fromDatetimeLocal(value: string) {
   return value.replace('T', ' ')
-}
-
-function maskPhone(phone: string) {
-  return phone.length === 11 ? `${phone.slice(0, 3)}****${phone.slice(-4)}` : phone
 }
 
 export function ConfirmRecordPage({ recordId }: { recordId: string }) {
@@ -332,14 +329,16 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   }
 
   const submitRecord = () => {
+    if (isSubmittingRef.current) return
     if (!ensureCanSave()) return
+    isSubmittingRef.current = true
     try {
       updateRecord(record.id, { ...customerPatch(), status: 'submitted', recordingState: 'idle', submitter: mockCurrentEmployee.name })
     } catch {
+      isSubmittingRef.current = false
       setEditNotice('接待记录提交失败，请稍后重试。')
       return
     }
-    isSubmittingRef.current = true
     try {
       window.sessionStorage.setItem(recordFeedbackNoticeKey, JSON.stringify({ recordId: record.id, status: 'submitted', createdAt: Date.now() }))
     } catch {
@@ -421,7 +420,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
                     key={member.id}
                     onClick={() => selectCustomer(member)}
                   >
-                    <strong>{member.name}</strong><span>{maskPhone(member.phone)}</span>
+                    <strong>{member.name}</strong><span>{formatMaskedPhone(member.phone, '手机号未填写')}</span>
                   </button>
                 ))}
                 {customerSearchResults.length === 0 && <p className="customer-search-empty">暂无匹配客户</p>}
@@ -431,7 +430,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
               <div className="customer-search-selected">
                 <span>已选择客户</span>
                 <strong>{matchedMember.name}</strong>
-                <span>{maskPhone(matchedMember.phone)}</span>
+                <span>{formatMaskedPhone(matchedMember.phone, '手机号未填写')}</span>
               </div>
             )}
             {customerSelectionError && <p className="field-error" role="alert">{customerSelectionError}</p>}
@@ -440,7 +439,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
         ) : (
           <>
             <dl className="info-grid info-grid--customer">
-              <div><dt>手机号</dt><dd>{customerPhone || '未填写'}</dd></div>
+              <div><dt>手机号</dt><dd>{formatMaskedPhone(customerPhone, '未填写')}</dd></div>
               <div><dt>姓名</dt><dd>{customerName || '未填写'}</dd></div>
             </dl>
             {record.customerBindingStatus === 'bound' ? <div className="customer-lookup-state customer-lookup-state--matched"><strong>✓ 客户已关联</strong></div> : <p className="customer-lookup-helper">尚未关联客户</p>}

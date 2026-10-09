@@ -185,5 +185,10 @@ export function updateMockMemberName(memberId: string, name: string) {
 }
 
 export function findMemberById(memberId?: string, customerId?: string) {
-  return mockMembers.find((member) => member.id === memberId || member.customerId === customerId)
+  if (memberId && customerId) {
+    return mockMembers.find((member) => member.id === memberId && member.customerId === customerId)
+  }
+  if (memberId) return mockMembers.find((member) => member.id === memberId)
+  if (customerId) return mockMembers.find((member) => member.customerId === customerId)
+  return undefined
 }

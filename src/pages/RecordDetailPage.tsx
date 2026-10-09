@@ -4,6 +4,7 @@ import { StructuredContentList } from '../components/StructuredContentList'
 import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import { findMemberById } from '../data/mockMembers'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 
 export function RecordDetailPage({ recordId, admin = false }: { recordId: string; admin?: boolean }) {
   const { getRecord } = useReceptionRecords()
@@ -20,6 +21,8 @@ export function RecordDetailPage({ recordId, admin = false }: { recordId: string
       </MobileShell>
     )
   }
+
+  const maskedPhone = formatMaskedPhone(record.customerPhone || record.customerInfo.phone, '未填写')
 
   if (admin && record.status !== 'submitted') {
     return (
@@ -56,8 +59,9 @@ export function RecordDetailPage({ recordId, admin = false }: { recordId: string
         </div>
         <dl className="info-grid">
           <div><dt>门店</dt><dd>{record.storeName}</dd></div>
-          <div><dt>接待人</dt><dd>{record.receptionistName}</dd></div>
-          <div><dt>接待时间</dt><dd>{record.receptionTime}</dd></div>
+          <div><dt>主接待人</dt><dd>{record.primaryReceptionist || record.receptionistName || '--'}</dd></div>
+          <div><dt>协同接待人</dt><dd>{record.coReceptionists.length > 0 ? record.coReceptionists.join('、') : '--'}</dd></div>
+          <div><dt>接待时间</dt><dd>{record.receptionTime || '--'}</dd></div>
           <div><dt>记录方式</dt><dd>{record.method === 'face-to-face' ? '面客模式' : '事后补录'}</dd></div>
         </dl>
       </section>
@@ -69,7 +73,7 @@ export function RecordDetailPage({ recordId, admin = false }: { recordId: string
         </div>
         <dl className="info-grid info-grid--customer">
           <div><dt>姓名</dt><dd>{record.customerInfo.name || '未填写'}</dd></div>
-          <div><dt>手机号</dt><dd>{record.customerInfo.phone || '未填写'}</dd></div>
+          <div><dt>手机号</dt><dd>{maskedPhone}</dd></div>
           <div><dt>客户关联状态</dt><dd>{record.customerBindingStatus === 'bound' ? '已关联' : '未关联'}</dd></div>
           {associatedMember && <div><dt>会员姓名</dt><dd>{associatedMember.name}</dd></div>}
         </dl>

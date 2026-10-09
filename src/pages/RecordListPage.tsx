@@ -3,6 +3,9 @@ import { MobileShell } from '../components/MobileShell'
 import { RecordingFloatingWindow } from '../components/RecordingFloatingWindow'
 import { StatusTag } from '../components/StatusTag'
 import { mockTranscriptLines } from '../data/mockTranscript'
+import { findMemberById } from '../data/mockMembers'
+import { formatMaskedPhone } from '../data/phoneDisplay'
+import { matchesReceptionRecordSearch } from '../data/recordSearch'
 import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import type { ReceptionRecord, RecordStatus } from '../types/record'
@@ -30,14 +33,6 @@ function recordRoute(record: { id: string; status: RecordStatus; recordingState:
   if (record.status === 'processing' || record.status === 'failed') return demoRoutes.organizing(record.id)
   if (record.status === 'ready-for-review' || record.status === 'draft') return demoRoutes.confirm(record.id)
   return demoRoutes.detail(record.id)
-}
-
-function statusDescription(status: RecordStatus) {
-  if (status === 'processing') return 'AI正在整理接待内容'
-  if (status === 'ready-for-review') return 'AI整理完成，请确认并提交'
-  if (status === 'draft') return '已保存草稿'
-  if (status === 'submitted') return '员工已完成确认提交'
-  return '识别异常，请稍后重试或联系技术人员。'
 }
 
 function displayTitle(record: ReceptionRecord) {
@@ -75,6 +70,14 @@ function formatCount(count: number) {
   return count > 99 ? '99+' : String(count)
 }
 
+function recordPhone(record: ReceptionRecord) {
+  const historicalPhone = record.customerPhone || record.customerInfo.phone
+  const linkedMember = record.customerBindingStatus === 'bound'
+    ? findMemberById(record.memberId, record.customerId)
+    : undefined
+  return formatMaskedPhone(historicalPhone || linkedMember?.phone, record.customerBindingStatus === 'bound' ? '手机号未填写' : '未关联客户')
+}
+
 function timeFilterLabel(filter: TimeFilter) {
   if (filter.range === 'last7') return '近7天'
   if (filter.range === 'last30') return '近30天'
@@ -85,20 +88,19 @@ function timeFilterLabel(filter: TimeFilter) {
 
 export function RecordListPage({ storeScenario, initialStatus }: { storeScenario?: EmployeeStoreScenario; initialStatus?: StatusFilter }) {
   const { records, updateRecord, startOrganizing } = useReceptionRecords()
-  const { accessibleStores, currentStore, selectStore, setScenario } = useStoreContext()
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(listFilterMemory.status)
+  const { currentStore, setScenario } = useStoreContext()
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus ?? listFilterMemory.status)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(listFilterMemory.time)
+  const [searchQuery, setSearchQuery] = useState('')
   const [isTimeSheetOpen, setTimeSheetOpen] = useState(false)
-  const [isStoreSheetOpen, setStoreSheetOpen] = useState(false)
-  const [recordingConflictOpen, setRecordingConflictOpen] = useState(false)
   useEffect(() => {
     if (storeScenario) setScenario(storeScenario)
   }, [setScenario, storeScenario])
 
   useEffect(() => {
-    if (!initialStatus) return
-    listFilterMemory.status = initialStatus
-    setStatusFilter(initialStatus)
+    const nextStatus = initialStatus ?? 'all'
+    listFilterMemory.status = nextStatus
+    setStatusFilter(nextStatus)
   }, [initialStatus])
 
   const scopedRecords = useMemo(
@@ -134,13 +136,19 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
     submitted: scopedRecords.filter((record) => record.status === 'submitted').length,
   }), [scopedRecords])
   const visibleRecords = useMemo(
-    () => scopedRecords.filter((record) => matchesStatus(record, statusFilter)),
-    [scopedRecords, statusFilter],
+    () => scopedRecords.filter((record) => {
+      if (!matchesStatus(record, statusFilter)) return false
+      const linkedMemberPhone = record.customerBindingStatus === 'bound'
+        ? findMemberById(record.memberId, record.customerId)?.phone
+        : undefined
+      return matchesReceptionRecordSearch(record, searchQuery, linkedMemberPhone)
+    }),
+    [scopedRecords, searchQuery, statusFilter],
   )
-
   const selectStatus = (nextStatus: StatusFilter) => {
     listFilterMemory.status = nextStatus
     setStatusFilter(nextStatus)
+    navigate(demoRoutes.recordHistory(nextStatus))
   }
 
   const updateTimeFilter = (next: Partial<TimeFilter>) => {
@@ -149,31 +157,8 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
     setTimeFilter(merged)
   }
 
-  const handleCreateRecord = () => {
-    if (activeRecordingRecord) {
-      setRecordingConflictOpen(true)
-      return
-    }
-    navigate(demoRoutes.create)
-  }
-
-  const storeContext = (
-    <button className="store-context-select" type="button" onClick={() => setStoreSheetOpen(true)}>
-      {currentStore.name}<span aria-hidden="true">›</span>
-    </button>
-  )
-
   return (
     <MobileShell title="接待记录" onBack={() => navigate(demoRoutes.records)} backLabel="返回智能对话">
-      <div className="record-list-store-context">{storeContext}</div>
-      <div className="page-intro page-intro--record-list">
-        <h2>接待记录</h2>
-      </div>
-
-      <button className="primary-button primary-button--large" type="button" onClick={handleCreateRecord}>
-        <span aria-hidden="true">＋</span> 新建记录
-      </button>
-
       <div className="filter-tabs" role="tablist" aria-label="接待记录状态筛选">
         {statusFilters.map((item) => (
           <button
@@ -189,11 +174,14 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
         ))}
       </div>
 
-      <div className="time-filter-row">
-        <span>时间</span>
-        <button type="button" onClick={() => setTimeSheetOpen(true)}>
-          <strong>{timeFilterLabel(timeFilter)}</strong><span aria-hidden="true">›</span>
+      <div className="record-filter-row">
+        <button className="record-filter-date" type="button" aria-label={`日期筛选：${timeFilterLabel(timeFilter)}`} onClick={() => setTimeSheetOpen(true)}>
+          <strong>{timeFilterLabel(timeFilter)}</strong><span aria-hidden="true">⌄</span>
         </button>
+        <label className="record-filter-search">
+          <span aria-hidden="true">⌕</span>
+          <input aria-label="搜索姓名或手机号" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="姓名 / 手机号" />
+        </label>
       </div>
 
       <div className="record-list">
@@ -215,10 +203,10 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
                 <span className="record-card__title">{displayTitle(record)}</span>
                 <StatusTag status={record.status} />
               </div>
-              <p className="record-card__status-note">{statusDescription(record.status)}</p>
+              <p className="record-card__status-note">{recordPhone(record)}</p>
               <p className="record-card__time">{record.receptionTime}</p>
               <div className="record-card__meta">
-                <span>{record.storeName.replace('奥本瑜伽 · ', '')} · {record.receptionistName}</span>
+                <span>{record.storeName.replace('奥本瑜伽 · ', '')} · {record.primaryReceptionist || record.receptionistName || '--'}</span>
               </div>
             </button>
           ))
@@ -264,33 +252,6 @@ export function RecordListPage({ storeScenario, initialStatus }: { storeScenario
         </div>
       )}
 
-      {isStoreSheetOpen && (
-        <div className="mobile-sheet-overlay" role="presentation" onClick={() => setStoreSheetOpen(false)}>
-          <section className="mobile-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="store-select-title" onClick={(event) => event.stopPropagation()}>
-            <div className="mobile-bottom-sheet__handle" />
-            <div className="mobile-bottom-sheet__heading"><h2 id="store-select-title">选择当前门店</h2><button type="button" onClick={() => setStoreSheetOpen(false)} aria-label="关闭门店选择">×</button></div>
-            <div className="time-range-options">
-              {accessibleStores.map((store) => <button className={currentStore.id === store.id ? 'time-range-option is-active' : 'time-range-option'} key={store.id} type="button" onClick={() => { selectStore(store.id); setStoreSheetOpen(false) }}><span>{store.name}</span>{currentStore.id === store.id && <b>✓</b>}</button>)}
-            </div>
-          </section>
-        </div>
-      )}
-      {recordingConflictOpen && activeRecordingRecord && (
-        <div className="mobile-sheet-overlay" role="presentation" onClick={() => setRecordingConflictOpen(false)}>
-          <section className="mobile-bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="recording-conflict-title" onClick={(event) => event.stopPropagation()}>
-            <div className="mobile-bottom-sheet__handle" />
-            <div className="mobile-bottom-sheet__heading">
-              <h2 id="recording-conflict-title">当前无法新建记录</h2>
-              <button type="button" onClick={() => setRecordingConflictOpen(false)} aria-label="关闭提示">×</button>
-            </div>
-            <p>当前正在录音中，请结束后继续操作</p>
-            <div className="recording-fixed-actions">
-              <button className="secondary-button" type="button" onClick={() => setRecordingConflictOpen(false)}>取消</button>
-              <button className="primary-button primary-button--large" type="button" onClick={() => { setRecordingConflictOpen(false); navigate(demoRoutes.recording(activeRecordingRecord.id)) }}>返回当前录音</button>
-            </div>
-          </section>
-        </div>
-      )}
     </MobileShell>
   )
 }

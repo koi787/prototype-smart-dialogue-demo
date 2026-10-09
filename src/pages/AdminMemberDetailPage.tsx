@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { AdminDialogueDetailDrawer } from './AdminDialogueDetailPage'
 import { findMemberById } from '../data/mockMembers'
+import { isRecordAssociatedWithMember } from '../data/preselectedCustomer'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 
 type MemberTab = 'basic' | 'contracts' | 'orders' | 'classes' | 'dialogue' | 'follow-up' | 'visit'
 
@@ -27,11 +29,7 @@ export function AdminMemberDetailDrawer({ memberId, onClose }: AdminMemberDetail
   const member = findMemberById(memberId)
 
   const memberRecords = useMemo(() => records
-    .filter((record) => (
-      record.status === 'submitted'
-      && record.customerBindingStatus === 'bound'
-      && (record.memberId === member?.id || record.customerId === member?.customerId)
-    ))
+    .filter((record) => member && isRecordAssociatedWithMember(record, member))
     .sort((left, right) => right.receptionTime.localeCompare(left.receptionTime)), [member, records])
 
   if (!member) {
@@ -56,7 +54,7 @@ export function AdminMemberDetailDrawer({ memberId, onClose }: AdminMemberDetail
         <div className="admin-drawer__body">
           <section className="member-profile-card member-profile-card--drawer">
             <div className="member-profile-card__avatar">{member.name.slice(0, 1)}</div>
-            <div className="member-profile-card__identity"><strong>{member.name}</strong><span>{member.phone}</span><small>{member.membershipLabel}</small></div>
+            <div className="member-profile-card__identity"><strong>{member.name}</strong><span>{formatMaskedPhone(member.phone, '手机号未填写')}</span><small>{member.membershipLabel}</small></div>
             <span className="admin-status-pill admin-status-pill--bound">已有会员</span>
           </section>
 
@@ -137,7 +135,7 @@ function BasicInformation({ member }: { member: NonNullable<ReturnType<typeof fi
     ['姓名', member.name],
     ['性别', member.gender ?? '--'],
     ['生日', member.birthday ?? '--'],
-    ['手机号', member.phone],
+    ['手机号', formatMaskedPhone(member.phone, '手机号未填写')],
     ['会员类型', member.membershipLabel],
     ['是否新会员', member.isNewMember ?? '--'],
     ['消费等级', member.consumptionLevel ?? '--'],

@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react'
 import { AobenMobileNav } from '../components/AobenMobileNav'
 import { MobileShell } from '../components/MobileShell'
 import { findMembersByPhone } from '../data/mockMembers'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 import { demoRoutes, navigate } from '../routes'
 
 export function MemberCenterPage({ initialPhone = '' }: { initialPhone?: string }) {
@@ -43,7 +44,7 @@ export function MemberCenterPage({ initialPhone = '' }: { initialPhone?: string 
           <div className="member-result-heading"><h2>搜索结果</h2><span>1 位会员</span></div>
           <button className="member-result-card" type="button" onClick={() => navigate(demoRoutes.mobileMemberDetail(member.id))}>
             <span className="member-result-avatar">{member.name.slice(0, 1)}</span>
-            <span className="member-result-copy"><strong>{member.name}</strong><small>{maskPhone(member.phone)}</small><em>注册时间：{member.registeredAt ?? '2026-06-22 11:04:49'}</em></span>
+            <span className="member-result-copy"><strong>{member.name}</strong><small>{formatMaskedPhone(member.phone, '手机号未填写')}</small><em>注册时间：{member.registeredAt ?? '2026-06-22 11:04:49'}</em></span>
             <b>›</b>
           </button>
         </section>
@@ -56,8 +57,4 @@ export function MemberCenterPage({ initialPhone = '' }: { initialPhone?: string 
       )}
     </MobileShell>
   )
-}
-
-function maskPhone(phone: string) {
-  return phone.length === 11 ? `${phone.slice(0, 3)}****${phone.slice(-4)}` : phone
 }

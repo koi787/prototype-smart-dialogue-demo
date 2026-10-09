@@ -4,12 +4,13 @@ import { StructuredContentList } from '../components/StructuredContentList'
 import { findMemberById } from '../data/mockMembers'
 import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
+import { isRecordAssociatedWithMember } from '../data/preselectedCustomer'
 
 export function MobileMemberDialogueDetailPage({ memberId, recordId }: { memberId: string; recordId: string }) {
   const { getRecord } = useReceptionRecords()
   const member = findMemberById(memberId)
   const record = getRecord(recordId)
-  const isVisible = Boolean(member && record && record.status === 'submitted' && record.customerBindingStatus === 'bound' && (record.memberId === member.id || record.customerId === member.customerId))
+  const isVisible = Boolean(member && record && isRecordAssociatedWithMember(record, member))
 
   if (!member || !record || !isVisible) {
     return (

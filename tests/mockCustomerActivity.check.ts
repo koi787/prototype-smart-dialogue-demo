@@ -2,11 +2,15 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { findMemberById, isMemberInCandidateSet, mockMembers, searchMembers } from '../src/data/mockMembers.ts'
 import { filterAssignedCustomers, getCustomerBusinessStatus } from '../src/data/mockCustomerActivity.ts'
-import { canEditCustomerInformation, isPreselectedCustomerRelationIntact } from '../src/data/preselectedCustomer.ts'
+import { canEditCustomerInformation, isPreselectedCustomerRelationIntact, isRecordAssociatedWithMember } from '../src/data/preselectedCustomer.ts'
+import { normalizeReceptionRecord } from '../src/data/normalizeReceptionRecord.ts'
+import type { ReceptionRecord } from '../src/types/record.ts'
 import { createReceptionRecord } from '../src/data/createReceptionRecord.ts'
 import { mockStores } from '../src/data/mockStores.ts'
 import { getRecordFeedbackMessage } from '../src/data/recordFeedback.ts'
-import { parseRoute } from '../src/routes.ts'
+import { formatMaskedPhone } from '../src/data/phoneDisplay.ts'
+import { matchesReceptionRecordSearch } from '../src/data/recordSearch.ts'
+import { demoRoutes, parseRoute } from '../src/routes.ts'
 
 test('到店与成交状态按课程完成、正式课程购买分别推导', () => {
   assert.deepEqual(getCustomerBusinessStatus('customer-001'), { visited: true, converted: false })
@@ -33,6 +37,15 @@ test('门店、姓名/手机号搜索、到店与成交条件组合筛选', () =
     deal: 'all',
   })
   assert.deepEqual(phoneMatch.map((member) => member.id), ['member-chen'])
+})
+
+test('手机号展示统一脱敏，兼容已脱敏快照、国际区号和缺失值', () => {
+  assert.equal(formatMaskedPhone('13800000000'), '138****0000')
+  assert.equal(formatMaskedPhone('138****0000'), '138****0000')
+  assert.equal(formatMaskedPhone('+86 138 0000 0000'), '138****0000')
+  assert.equal(formatMaskedPhone(''), '--')
+  assert.equal(formatMaskedPhone(undefined, '未关联客户'), '未关联客户')
+  assert.equal(formatMaskedPhone('1380000'), '--')
 })
 
 test('客户列表严格限定当前门店，体验课购买不计为成交', () => {
@@ -83,6 +96,7 @@ test('同名及手机号后四位相同的候选仍分别返回，门店过滤�
 test('客户经营首页、历史记录状态入口和客户详情返回来源路由可解析', () => {
   assert.equal(parseRoute('#/records').kind, 'records')
   assert.deepEqual(parseRoute('#/records/history?status=pending'), { kind: 'record-history', initialStatus: 'pending' })
+  assert.deepEqual(parseRoute('#/records/history'), { kind: 'record-history', initialStatus: 'all' })
   assert.deepEqual(parseRoute('#/member-center/members/member-chen?from=records'), { kind: 'mobile-member-detail', memberId: 'member-chen', backToRecords: true })
 })
 
@@ -91,6 +105,12 @@ test('客户列表新增接待通过 customerId 进入模式选择页', () => {
     kind: 'create',
     preselectedCustomerId: 'customer-wang',
   })
+})
+
+test('历史记录和待处理入口使用同一列表并保留默认筛选状态', () => {
+  assert.equal(demoRoutes.recordHistory(), '#/records/history?status=all')
+  assert.equal(demoRoutes.recordHistory('pending'), '#/records/history?status=pending')
+  assert.deepEqual(parseRoute('#/records/record-002/confirm'), { kind: 'confirm', recordId: 'record-002' })
 })
 
 test('全新记录默认不携带模式，录音返回路由可恢复当前模式及预选客户', () => {
@@ -133,6 +153,63 @@ test('预选客户关联校验要求 memberId、customerId 与客户快照一致
   assert.equal(isPreselectedCustomerRelationIntact(preselectedRecord, wang, '陈女士', wang.phone), false)
   assert.equal(isPreselectedCustomerRelationIntact({ ...preselectedRecord, creationSource: 'direct' }, undefined, '新姓名', '13900000000'), true)
   assert.equal(canEditCustomerInformation({ ...preselectedRecord, creationSource: 'direct' }), true)
+})
+
+test('会员详情只展示双 ID 一致的已提交关联记录，兼容仅保存一个旧 ID 的记录', () => {
+  const chen = mockMembers.find((member) => member.customerId === 'customer-chen')!
+  const base = {
+    status: 'submitted' as const,
+    customerBindingStatus: 'bound' as const,
+    memberId: chen.id,
+    customerId: chen.customerId,
+  } as ReceptionRecord
+
+  assert.equal(isRecordAssociatedWithMember(base, chen), true)
+  assert.equal(isRecordAssociatedWithMember({ ...base, customerId: 'customer-wang' }, chen), false)
+  assert.equal(isRecordAssociatedWithMember({ ...base, status: 'draft' }, chen), false)
+  assert.equal(isRecordAssociatedWithMember({ ...base, customerBindingStatus: 'unbound' }, chen), false)
+  assert.equal(isRecordAssociatedWithMember({ ...base, customerId: undefined }, chen), true)
+  assert.equal(isRecordAssociatedWithMember({ ...base, memberId: undefined }, chen), true)
+})
+
+test('接待记录搜索支持姓名模糊、完整手机号及后四位，并校验关联 ID', () => {
+  const chen = mockMembers.find((member) => member.customerId === 'customer-chen')!
+  const record = {
+    customerBindingStatus: 'bound',
+    memberId: chen.id,
+    customerId: chen.customerId,
+    customerName: chen.name,
+    customerPhone: chen.phone,
+    customerInfo: { name: chen.name, phone: '' },
+  } as ReceptionRecord
+
+  assert.equal(matchesReceptionRecordSearch(record, '榛', chen.phone), true)
+  assert.equal(matchesReceptionRecordSearch(record, '18344639949', chen.phone), true)
+  assert.equal(matchesReceptionRecordSearch(record, '9949', chen.phone), true)
+  assert.equal(matchesReceptionRecordSearch(record, '不存在', chen.phone), false)
+  assert.equal(matchesReceptionRecordSearch({ ...record, customerId: 'customer-wang' }, '18344639949'), true)
+  assert.equal(matchesReceptionRecordSearch({ ...record, customerId: 'customer-wang', customerPhone: '', customerInfo: { ...record.customerInfo, phone: '' } }, '18344639949'), false)
+})
+
+test('旧版持久化记录缺少可选字段或部分 AI 字段时可安全恢复且不编造内容', () => {
+  const legacy = normalizeReceptionRecord({
+    id: 'legacy-record',
+    status: 'submitted',
+    customerBindingStatus: 'bound',
+    memberId: 'member-chen',
+    customerId: 'customer-chen',
+    method: 'afterwards',
+    aiContent: { summary: '历史摘要' } as unknown as ReceptionRecord['aiContent'],
+  })
+
+  assert.equal(legacy.status, 'submitted')
+  assert.equal(legacy.customerInfo.name, '')
+  assert.equal(legacy.customerInfo.phone, '')
+  assert.deepEqual(legacy.coReceptionists, [])
+  assert.equal(legacy.aiContent.summary, '历史摘要')
+  assert.equal(legacy.aiContent.customerNeeds, '')
+  assert.equal(legacy.transcript.length, 0)
+  assert.equal(findMemberById('member-chen', 'customer-wang'), undefined)
 })
 
 test('两种接待方式均将预选客户 ID 与来源写入独立记录并可序列化恢复', () => {

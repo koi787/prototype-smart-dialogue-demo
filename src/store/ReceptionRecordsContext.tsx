@@ -4,6 +4,7 @@ import { findMemberById, findMembersByPhone } from '../data/mockMembers'
 import { findMockStoreByName } from '../data/mockStores'
 import { mockCurrentEmployee } from '../data/mockStaff'
 import { createReceptionRecord } from '../data/createReceptionRecord'
+import { normalizeReceptionRecord } from '../data/normalizeReceptionRecord'
 import { structuredContentLabels, type ReceptionRecord, type StructuredContent } from '../types/record'
 import type { Store } from '../types/store'
 
@@ -27,56 +28,31 @@ function readInitialRecords() {
   try {
     const parsed = JSON.parse(saved) as ReceptionRecord[]
     if (!Array.isArray(parsed) || parsed.length === 0) return mockRecords
-    const normalized = parsed.map(normalizeRecord)
+    const normalize = (record: ReceptionRecord) => normalizeReceptionRecord(
+      record,
+      mockRecords.find((item) => item.id === record.id),
+      {
+        findMember: (memberId, customerId, phone, isBound) => {
+          let member = findMemberById(memberId, customerId)
+          if (!member && isBound && phone) {
+            try {
+              const matches = findMembersByPhone(phone)
+              member = matches.length === 1 ? matches[0] : undefined
+            } catch {
+              member = undefined
+            }
+          }
+          return member
+        },
+        findStoreId: (storeName) => findMockStoreByName(storeName)?.id,
+      },
+    )
+    const normalized = parsed.map(normalize)
     const existingIds = new Set(normalized.map((record) => record.id))
-    const missingMocks = mockRecords.filter((record) => !existingIds.has(record.id)).map(normalizeRecord)
+    const missingMocks = mockRecords.filter((record) => !existingIds.has(record.id)).map(normalize)
     return [...normalized, ...missingMocks]
   } catch {
     return mockRecords
-  }
-}
-
-function normalizeRecord(record: ReceptionRecord): ReceptionRecord {
-  const mockFallback = mockRecords.find((item) => item.id === record.id)
-  const hasStructuredContent = Object.values(record.aiContent ?? {}).some((value) => value.trim().length > 0)
-  const normalizedAiStatus = record.aiStatus ?? mockFallback?.aiStatus ?? (hasStructuredContent ? 'success' : 'failed')
-  const normalizedBindingStatus = record.customerRelationStatus ?? record.customerBindingStatus ?? mockFallback?.customerBindingStatus ?? 'unbound'
-  const normalizedStatus = normalizedAiStatus === 'failed'
-    ? 'failed'
-    : record.status === 'submitted' && normalizedBindingStatus !== 'bound'
-      ? 'draft'
-      : record.status
-  let associatedMember = findMemberById(record.memberId, record.customerId)
-  if (!associatedMember && normalizedBindingStatus === 'bound' && record.customerInfo.phone) {
-    try {
-      associatedMember = findMembersByPhone(record.customerInfo.phone).length === 1
-        ? findMembersByPhone(record.customerInfo.phone)[0]
-        : undefined
-    } catch {
-      associatedMember = undefined
-    }
-  }
-  return {
-    ...record,
-    creationSource: record.creationSource ?? 'direct',
-    storeId: record.storeId ?? mockFallback?.storeId ?? findMockStoreByName(record.storeName)?.id ?? 'guomao',
-    creator: record.creator ?? mockFallback?.creator ?? record.receptionistName,
-    submitter: normalizedStatus === 'draft' ? '' : record.submitter ?? mockFallback?.submitter ?? '',
-    primaryReceptionist: record.primaryReceptionist ?? mockFallback?.primaryReceptionist ?? record.receptionistName,
-    coReceptionists: record.coReceptionists ?? mockFallback?.coReceptionists ?? [],
-    recordingStartedAt: record.recordingStartedAt ?? mockFallback?.recordingStartedAt ?? record.receptionTime,
-    recordingMethod: record.recordingMethod ?? mockFallback?.recordingMethod ?? record.method,
-    status: normalizedStatus,
-    customerBindingStatus: normalizedBindingStatus,
-    memberId: record.memberId ?? mockFallback?.memberId ?? associatedMember?.id,
-    customerId: record.customerId ?? mockFallback?.customerId ?? associatedMember?.customerId,
-    customerName: record.customerName ?? record.customerInfo.name,
-    customerPhone: record.customerPhone ?? record.customerInfo.phone,
-    customerRelationStatus: normalizedBindingStatus,
-    transcriptionStatus: record.transcriptionStatus ?? mockFallback?.transcriptionStatus ?? (record.transcript.length > 0 ? 'success' : 'failed'),
-    aiStatus: normalizedAiStatus,
-    recordingState: record.recordingState ?? 'idle',
-    organizingProgress: record.organizingProgress ?? 100,
   }
 }
 

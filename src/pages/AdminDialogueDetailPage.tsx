@@ -2,6 +2,7 @@ import { StructuredContentList } from '../components/StructuredContentList'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import { formatBindingStatus, getBindingStatus } from '../data/dialogueRecordView'
 import { useState } from 'react'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 
 function transcriptTime(index: number) {
   return `14:30:${String(12 + index * 6).padStart(2, '0')}`
@@ -43,7 +44,7 @@ export function AdminDialogueDetailDrawer({ recordId, onClose }: AdminDialogueDe
             <div className="admin-detail-section__heading"><h3 id="admin-base-info-title">接待信息</h3></div>
             <div className="admin-detail-info-grid">
               <div><dt>客户姓名</dt><dd>{record.customerInfo.name || '--'}</dd></div>
-              <div><dt>客户手机号</dt><dd>{record.customerInfo.phone || '--'}</dd></div>
+              <div><dt>客户手机号</dt><dd>{formatMaskedPhone(record.customerPhone || record.customerInfo.phone)}</dd></div>
               <div><dt>客户关联状态</dt><dd><span className={`admin-status-pill admin-status-pill--${getBindingStatus(record)}`}>{formatBindingStatus(getBindingStatus(record))}</span></dd></div>
               <div><dt>接待时间</dt><dd>{record.receptionTime || '--'}</dd></div>
               <div><dt>门店</dt><dd>{record.storeName}</dd></div>

@@ -4,6 +4,8 @@ import { MobileShell } from '../components/MobileShell'
 import { findMemberById } from '../data/mockMembers'
 import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
+import { isRecordAssociatedWithMember } from '../data/preselectedCustomer'
+import { formatMaskedPhone } from '../data/phoneDisplay'
 
 const memberTabs = ['基本信息', '跟进记录', '课卡合同', '订单中心', '上课记录', '储值合同', '其他']
 const followUpTypes = ['智能对话', '跟进记录', '拜访记录']
@@ -16,11 +18,7 @@ export function MobileMemberDetailPage({ memberId, initialTab, backToRecords }: 
   const handleBack = () => navigate(backToRecords ? demoRoutes.records : demoRoutes.memberCenter)
 
   const dialogueRecords = useMemo(() => records
-    .filter((record) => (
-      record.status === 'submitted'
-      && record.customerBindingStatus === 'bound'
-      && (record.memberId === member?.id || record.customerId === member?.customerId)
-    ))
+    .filter((record) => member && isRecordAssociatedWithMember(record, member))
     .sort((left, right) => right.receptionTime.localeCompare(left.receptionTime)), [member, records])
 
   if (!member) {
@@ -35,7 +33,7 @@ export function MobileMemberDetailPage({ memberId, initialTab, backToRecords }: 
     <MobileShell title="会员详情" onBack={handleBack} bottomNav={<AobenMobileNav active="member" />}>
       <section className="mobile-member-summary">
         <span className="mobile-member-avatar">{member.name.slice(0, 1)}</span>
-        <div><strong>{member.name}</strong><span>{member.phone}</span></div>
+        <div><strong>{member.name}</strong><span>{formatMaskedPhone(member.phone, '手机号未填写')}</span></div>
         <em>{member.membershipLabel}</em>
       </section>
 
@@ -64,7 +62,7 @@ function BasicInformation({ member }: { member: NonNullable<ReturnType<typeof fi
     ['姓名', member.name],
     ['性别', member.gender ?? '--'],
     ['生日', member.birthday ?? '--'],
-    ['手机号', member.phone],
+    ['手机号', formatMaskedPhone(member.phone, '手机号未填写')],
     ['是否新会员', member.isNewMember ?? '--'],
     ['消费等级', member.consumptionLevel ?? '--'],
     ['成长值', member.growthValue ?? '--'],

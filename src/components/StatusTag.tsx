@@ -1,6 +1,7 @@
 import type { RecordStatus } from '../types/record'
 
 export function StatusTag({ status }: { status: RecordStatus }) {
+  const isPending = status === 'draft' || status === 'ready-for-review'
   const label = status === 'draft'
     ? '待提交'
     : status === 'submitted'
@@ -10,5 +11,5 @@ export function StatusTag({ status }: { status: RecordStatus }) {
         : status === 'ready-for-review'
           ? '待提交'
           : '整理失败'
-  return <span className={`status-tag status-tag--${status}`}>{label}</span>
+  return <span className={`status-tag status-tag--${isPending ? 'pending' : status}`}>{label}</span>
 }

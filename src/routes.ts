@@ -8,7 +8,7 @@ export type DemoMode = 'mobile' | 'admin'
 export const demoRoutes = {
   home: '#/home',
   records: '#/records',
-  recordHistory: (status?: 'all' | 'processing' | 'pending' | 'submitted') => `#/records/history${status ? `?status=${status}` : ''}`,
+  recordHistory: (status: 'all' | 'processing' | 'pending' | 'submitted' = 'all') => `#/records/history?status=${status}`,
   mobileRecords: '#/mobile/records',
   memberCenter: '#/member-center',
   mobileMemberDetail: (memberId: string, tab?: 'follow-up', source?: 'records') => `#/member-center/members/${memberId}${tab || source ? `?${[tab ? 'tab=follow-up' : '', source ? 'from=records' : ''].filter(Boolean).join('&')}` : ''}`,
@@ -88,7 +88,7 @@ export function parseRoute(hash: string): AppRoute {
     const employee = params.get('employee')
     const status = params.get('status')
     const validStatus = status === 'all' || status === 'processing' || status === 'pending' || status === 'submitted' ? status : undefined
-    return { kind: 'record-history', ...(employee === 'single' ? { storeScenario: 'single' as const } : {}), ...(validStatus ? { initialStatus: validStatus } : {}) }
+    return { kind: 'record-history', ...(employee === 'single' ? { storeScenario: 'single' as const } : {}), initialStatus: validStatus ?? 'all' }
   }
   if (pathname === '/records') {
     const employee = new URLSearchParams(search).get('employee')
