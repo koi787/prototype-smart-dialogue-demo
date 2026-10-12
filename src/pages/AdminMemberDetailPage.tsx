@@ -1,20 +1,25 @@
 import { useMemo, useState } from 'react'
 import { AdminDialogueDetailDrawer } from './AdminDialogueDetailPage'
 import { findMemberById } from '../data/mockMembers'
-import { isRecordAssociatedWithMember } from '../data/preselectedCustomer'
+import { getMemberDialogueRecords } from '../data/preselectedCustomer'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
 import { formatMaskedPhone } from '../data/phoneDisplay'
 
-type MemberTab = 'basic' | 'contracts' | 'orders' | 'classes' | 'dialogue' | 'follow-up' | 'visit'
+type MemberTab = 'basic' | 'contracts' | 'orders' | 'classes' | 'follow-up-info'
+type FollowUpType = 'follow-up' | 'visit' | 'dialogue'
 
-const memberTabs: Array<{ key: MemberTab; label: string; unavailable?: boolean }> = [
+const memberTabs: Array<{ key: MemberTab; label: string }> = [
   { key: 'basic', label: '基础信息' },
   { key: 'contracts', label: '课卡合同' },
   { key: 'orders', label: '订单中心' },
   { key: 'classes', label: '上课记录' },
+  { key: 'follow-up-info', label: '跟进信息' },
+]
+
+const followUpTypes: Array<{ key: FollowUpType; label: string }> = [
+  { key: 'follow-up', label: '跟进记录' },
+  { key: 'visit', label: '拜访记录' },
   { key: 'dialogue', label: '智能对话' },
-  { key: 'follow-up', label: '跟进记录', unavailable: true },
-  { key: 'visit', label: '拜访记录', unavailable: true },
 ]
 
 type AdminMemberDetailDrawerProps = {
@@ -24,13 +29,12 @@ type AdminMemberDetailDrawerProps = {
 
 export function AdminMemberDetailDrawer({ memberId, onClose }: AdminMemberDetailDrawerProps) {
   const { records } = useReceptionRecords()
-  const [activeTab, setActiveTab] = useState<MemberTab>('dialogue')
+  const [activeTab, setActiveTab] = useState<MemberTab>('follow-up-info')
+  const [activeFollowUpType, setActiveFollowUpType] = useState<FollowUpType>('dialogue')
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
   const member = findMemberById(memberId)
 
-  const memberRecords = useMemo(() => records
-    .filter((record) => member && isRecordAssociatedWithMember(record, member))
-    .sort((left, right) => right.receptionTime.localeCompare(left.receptionTime)), [member, records])
+  const memberRecords = useMemo(() => getMemberDialogueRecords(records, member), [member, records])
 
   if (!member) {
     return (
@@ -64,19 +68,37 @@ export function AdminMemberDetailDrawer({ memberId, onClose }: AdminMemberDetail
                 key={tab.key}
                 className={activeTab === tab.key ? 'member-tab is-active' : 'member-tab'}
                 type="button"
-                disabled={tab.unavailable}
                 onClick={() => setActiveTab(tab.key)}
               >
-                {tab.label}{tab.unavailable && <small className="member-tab__status">未开放</small>}
+                {tab.label}
               </button>
             ))}
           </nav>
 
-          {activeTab === 'dialogue' ? (
-            <DialogueTab
-              records={memberRecords}
-              onViewRecord={setSelectedRecordId}
-            />
+          {activeTab === 'follow-up-info' ? (
+            <>
+              <nav className="member-tabs member-follow-up-types" role="tablist" aria-label="跟进信息类型">
+                {followUpTypes.map((type) => (
+                  <button
+                    key={type.key}
+                    className={activeFollowUpType === type.key ? 'member-tab is-active' : 'member-tab'}
+                    type="button"
+                    aria-selected={activeFollowUpType === type.key}
+                    role="tab"
+                    onClick={() => setActiveFollowUpType(type.key)}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </nav>
+              {activeFollowUpType === 'dialogue' ? (
+                <DialogueTab records={memberRecords} onViewRecord={setSelectedRecordId} />
+              ) : (
+                <section className="member-placeholder-card" aria-live="polite">
+                  <span>○</span><h2>暂未接入</h2><p>当前{followUpTypes.find((type) => type.key === activeFollowUpType)?.label}数据暂未接入。</p>
+                </section>
+              )}
+            </>
           ) : activeTab === 'basic' ? (
             <BasicInformation member={member} />
           ) : (

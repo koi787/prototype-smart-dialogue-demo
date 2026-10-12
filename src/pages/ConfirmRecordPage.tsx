@@ -3,7 +3,7 @@ import { MobileShell } from '../components/MobileShell'
 import { demoRoutes, navigate, recordFeedbackNoticeKey } from '../routes'
 import { RecordDetailPage } from './RecordDetailPage'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
-import { findMemberById, isMemberInCandidateSet, mockMembers, searchMembers, type Member } from '../data/mockMembers'
+import { createAndAssociateMockMember, findMemberById, isMemberInCandidateSet, mockMembers, searchMembers, type Member } from '../data/mockMembers'
 import { filterAssignedCustomers } from '../data/mockCustomerActivity'
 import { mockCurrentEmployee, mockEmployeeReceptionistPermissionIds, mockReceptionists } from '../data/mockStaff'
 import { structuredContentLabels, type StructuredContent } from '../types/record'
@@ -37,14 +37,20 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('')
   const [customerSelectionError, setCustomerSelectionError] = useState('')
   const [matchedMember, setMatchedMember] = useState<Member | undefined>()
+  const [newMemberDialogOpen, setNewMemberDialogOpen] = useState(false)
+  const [newMemberName, setNewMemberName] = useState('')
+  const [newMemberPhone, setNewMemberPhone] = useState('')
+  const [newMemberError, setNewMemberError] = useState('')
+  const [creatingMember, setCreatingMember] = useState(false)
   const [editingModuleKey, setEditingModuleKey] = useState<keyof StructuredContent | null>(null)
   const [moduleDraft, setModuleDraft] = useState('')
   const [editNotice, setEditNotice] = useState('')
   const isSubmittingRef = useRef(false)
+  const isCreatingMemberRef = useRef(false)
   const coCandidates = availableReceptionists.filter((teacher) => teacher.name !== primaryReceptionist && !coReceptionists.includes(teacher.name) && teacher.name.includes(coSearch.trim()))
   const currentStoreMembers = useMemo(
     () => filterAssignedCustomers(mockMembers, { storeId: currentStore.id }),
-    [currentStore.id],
+    [currentStore.id, mockMembers.length],
   )
 
   useEffect(() => {
@@ -202,6 +208,76 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
     setCustomerPhone(allowedMember.phone)
     setCustomerSearchQuery('')
     setCustomerSelectionError('')
+  }
+
+  const openCreateMemberDialog = () => {
+    const query = customerSearchQuery.trim()
+    const isFullPhone = /^1[3-9]\d{9}$/.test(query)
+    setNewMemberName(query && !/^\d+$/.test(query) ? query : '')
+    setNewMemberPhone(isFullPhone ? query : '')
+    setNewMemberError('')
+    setNewMemberDialogOpen(true)
+  }
+
+  const closeCreateMemberDialog = () => {
+    if (creatingMember) return
+    setNewMemberDialogOpen(false)
+    setNewMemberError('')
+  }
+
+  const createAndAssociateMember = () => {
+    if (isCreatingMemberRef.current) return
+    const name = newMemberName.trim()
+    const phone = newMemberPhone.trim()
+    if (!name) {
+      setNewMemberError('请输入用户姓名')
+      return
+    }
+    if (!phone) {
+      setNewMemberError('请输入手机号')
+      return
+    }
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      setNewMemberError('请输入正确的手机号')
+      return
+    }
+
+    isCreatingMemberRef.current = true
+    setCreatingMember(true)
+    let createdMember: Member | undefined
+    try {
+      const result = createAndAssociateMockMember(name, phone, currentStore.id, currentStore.name, (member) => {
+        createdMember = member
+        if (member.storeId !== currentStore.id || !member.id || !member.customerId) {
+          throw new Error('新用户信息无法验证，暂时不能关联接待记录。')
+        }
+        updateRecord(record.id, { ...customerPatch(member) })
+      })
+      createdMember = result.member
+      if (result.associationError) throw new Error('新用户已创建，但暂未关联此接待记录。请点击保存重试；请勿再次新增。')
+      setMatchedMember(createdMember)
+      setCustomerName(createdMember.name)
+      setCustomerPhone(createdMember.phone)
+      setCustomerSearchQuery('')
+      setCustomerSelectionError('')
+      setEditingCustomer(false)
+      setNewMemberDialogOpen(false)
+      setNewMemberError('')
+    } catch (error) {
+      if (createdMember) {
+        setMatchedMember(createdMember)
+        setCustomerName(createdMember.name)
+        setCustomerPhone(createdMember.phone)
+        setCustomerSearchQuery('')
+        setCustomerSelectionError('用户已新增，但暂未关联此接待记录。请点击保存重试；请勿再次新增。')
+        setNewMemberDialogOpen(false)
+      } else {
+        setNewMemberError(error instanceof Error ? error.message : '新增失败，请稍后重试。')
+      }
+    } finally {
+      isCreatingMemberRef.current = false
+      setCreatingMember(false)
+    }
   }
 
   const cancelReceptionInfoEdit = () => {
@@ -409,6 +485,7 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
         {editingCustomer && customerInformationEditable ? (
           <div className="customer-form">
             <label>搜索客户<input aria-label="搜索客户姓名或手机号" autoComplete="off" value={customerSearchQuery} onChange={(event) => searchForCustomer(event.target.value)} placeholder="搜索客户姓名 / 手机号" /></label>
+            <p className="customer-create-helper">系统中没有该客户？请先新增用户，再继续操作。</p>
             {customerSearchQuery.trim() && (
               <div className="customer-search-results" role="listbox" aria-label="匹配客户列表">
                 {customerSearchResults.map((member) => (
@@ -423,9 +500,10 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
                     <strong>{member.name}</strong><span>{formatMaskedPhone(member.phone, '手机号未填写')}</span>
                   </button>
                 ))}
-                {customerSearchResults.length === 0 && <p className="customer-search-empty">暂无匹配客户</p>}
+                {customerSearchResults.length === 0 && <p className="customer-search-empty">未找到匹配客户</p>}
               </div>
             )}
+            <button className="customer-create-trigger" type="button" onClick={openCreateMemberDialog}>＋ 新增用户</button>
             {matchedMember && (
               <div className="customer-search-selected">
                 <span>已选择客户</span>
@@ -463,6 +541,33 @@ export function ConfirmRecordPage({ recordId }: { recordId: string }) {
           ))}
         </div>
       </section>
+
+      {newMemberDialogOpen && (
+        <div className="customer-create-overlay" onClick={closeCreateMemberDialog}>
+          <section
+            className="customer-create-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="customer-create-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="customer-create-title">新增用户</h2>
+            <label>
+              用户姓名
+              <input autoFocus value={newMemberName} onChange={(event) => setNewMemberName(event.target.value)} placeholder="请输入用户姓名" />
+            </label>
+            <label>
+              手机号
+              <input inputMode="tel" autoComplete="tel" value={newMemberPhone} onChange={(event) => setNewMemberPhone(event.target.value)} placeholder="请输入手机号" />
+            </label>
+            {newMemberError && <p className="field-error" role="alert">{newMemberError}</p>}
+            <div className="customer-create-dialog__actions">
+              <button className="secondary-button" type="button" onClick={closeCreateMemberDialog} disabled={creatingMember}>取消</button>
+              <button className="primary-button" type="button" onClick={createAndAssociateMember} disabled={creatingMember}>{creatingMember ? '新增中…' : '确认新增'}</button>
+            </div>
+          </section>
+        </div>
+      )}
     </MobileShell>
   )
 }

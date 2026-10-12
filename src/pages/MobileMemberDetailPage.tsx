@@ -4,22 +4,20 @@ import { MobileShell } from '../components/MobileShell'
 import { findMemberById } from '../data/mockMembers'
 import { demoRoutes, navigate } from '../routes'
 import { useReceptionRecords } from '../store/ReceptionRecordsContext'
-import { isRecordAssociatedWithMember } from '../data/preselectedCustomer'
+import { getMemberDialogueRecords } from '../data/preselectedCustomer'
 import { formatMaskedPhone } from '../data/phoneDisplay'
 
-const memberTabs = ['基本信息', '跟进记录', '课卡合同', '订单中心', '上课记录', '储值合同', '其他']
-const followUpTypes = ['智能对话', '跟进记录', '拜访记录']
+const memberTabs = ['基本信息', '跟进信息', '课卡合同', '订单中心', '上课记录', '储值合同', '其他']
+const followUpTypes = ['跟进记录', '拜访记录', '智能对话']
 
 export function MobileMemberDetailPage({ memberId, initialTab, backToRecords }: { memberId: string; initialTab?: 'follow-up'; backToRecords?: boolean }) {
   const { records } = useReceptionRecords()
-  const [activeTab, setActiveTab] = useState(initialTab === 'follow-up' ? '跟进记录' : '基本信息')
+  const [activeTab, setActiveTab] = useState(initialTab === 'follow-up' ? '跟进信息' : '基本信息')
   const [activeFollowUpType, setActiveFollowUpType] = useState('智能对话')
   const member = findMemberById(memberId)
   const handleBack = () => navigate(backToRecords ? demoRoutes.records : demoRoutes.memberCenter)
 
-  const dialogueRecords = useMemo(() => records
-    .filter((record) => member && isRecordAssociatedWithMember(record, member))
-    .sort((left, right) => right.receptionTime.localeCompare(left.receptionTime)), [member, records])
+  const dialogueRecords = useMemo(() => getMemberDialogueRecords(records, member), [member, records])
 
   if (!member) {
     return (
@@ -42,16 +40,16 @@ export function MobileMemberDetailPage({ memberId, initialTab, backToRecords }: 
       </nav>
 
       {activeTab === '基本信息' && <BasicInformation member={member} />}
-      {activeTab === '跟进记录' && (
+      {activeTab === '跟进信息' && (
         <section className="mobile-follow-up-section">
-          <div className="mobile-follow-up-heading"><h2>跟进记录</h2><span>只读查看</span></div>
-          <div className="mobile-follow-up-types" role="tablist" aria-label="跟进记录类型">
+          <div className="mobile-follow-up-heading"><h2>跟进信息</h2><span>只读查看</span></div>
+          <div className="mobile-follow-up-types" role="tablist" aria-label="跟进信息类型">
             {followUpTypes.map((type) => <button className={activeFollowUpType === type ? 'mobile-follow-up-type is-active' : 'mobile-follow-up-type'} type="button" role="tab" aria-selected={activeFollowUpType === type} key={type} onClick={() => setActiveFollowUpType(type)}>{type}</button>)}
           </div>
-          {activeFollowUpType !== '智能对话' ? <div className="mobile-member-empty"><strong>暂无记录</strong><p>当前暂无{activeFollowUpType}。</p></div> : <DialogueRecordList memberId={member.id} records={dialogueRecords} />}
+          {activeFollowUpType !== '智能对话' ? <div className="mobile-member-placeholder"><span>○</span><h2>暂未接入</h2><p>当前{activeFollowUpType}数据暂未接入。</p></div> : <DialogueRecordList memberId={member.id} records={dialogueRecords} />}
         </section>
       )}
-      {!['基本信息', '跟进记录'].includes(activeTab) && <section className="mobile-member-placeholder"><span>○</span><h2>{activeTab}</h2><p>该功能暂未开放。</p></section>}
+      {!['基本信息', '跟进信息'].includes(activeTab) && <section className="mobile-member-placeholder"><span>○</span><h2>{activeTab}</h2><p>该功能暂未开放。</p></section>}
     </MobileShell>
   )
 }

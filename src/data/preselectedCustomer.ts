@@ -15,6 +15,14 @@ export function isRecordAssociatedWithMember(record: ReceptionRecord, member: Me
   return false
 }
 
+export function getMemberDialogueRecords(records: ReceptionRecord[], member: Member | undefined) {
+  if (!member) return []
+
+  return records
+    .filter((record) => isRecordAssociatedWithMember(record, member))
+    .sort((left, right) => right.receptionTime.localeCompare(left.receptionTime))
+}
+
 export function isPreselectedCustomerRelationIntact(
   record: ReceptionRecord,
   matchedMember: Member | undefined,

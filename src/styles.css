@@ -218,6 +218,10 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .mobile-dialogue-transcript-list strong { color: var(--brand-red-dark); font-size: 11px; }
 .mobile-dialogue-transcript-list strong.is-customer { color: #2f54eb; }
 .mobile-dialogue-transcript-list p { margin: 0; color: #555b63; font-size: 12px; line-height: 1.6; }
+.mobile-member-transcript-list { display: grid; gap: 9px; }
+.mobile-member-transcript-list article { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 9px; align-items: start; padding: 12px; border-radius: 11px; background: #f7f8fa; }
+.mobile-member-transcript-list strong { color: var(--brand-red-dark); font-size: 11px; }
+.mobile-member-transcript-list p { margin: 0; color: #555b63; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .page-section { margin: 12px 0 22px; }
 .create-record-heading { margin-top: 18px; }
 .create-next-button { margin-top: 22px; }
@@ -424,8 +428,21 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .customer-search-result strong { font-size: 13px; font-weight: 600; }
 .customer-search-result span { color: var(--muted); font-size: 12px; }
 .customer-search-empty { margin: 0; padding: 14px 11px; color: var(--muted); font-size: 12px; text-align: center; }
+.customer-create-helper { margin: 5px 1px 2px; color: #8a9199; font-size: 11px; line-height: 1.45; }
+.customer-create-trigger { width: 100%; min-height: 42px; margin-top: 7px; border: 1px dashed #ffb3ad; border-radius: 10px; color: var(--brand-red-dark); background: #fffafa; cursor: pointer; font-size: 13px; font-weight: 600; }
 .customer-search-selected { display: flex; align-items: center; gap: 8px; padding: 10px 11px; border-radius: 10px; color: #389e0d; background: #f6ffed; font-size: 12px; }
 .customer-search-selected strong { color: #344334; font-size: 13px; }
+.customer-create-overlay { position: fixed; z-index: 140; inset: 0; display: grid; place-items: center; padding: 20px; background: rgb(31 35 41 / 42%); }
+.customer-create-dialog { display: grid; width: min(100%, 380px); gap: 15px; padding: 22px; border-radius: 18px; background: #fff; box-shadow: 0 18px 52px rgb(31 35 41 / 20%); animation: customer-dialog-in 160ms ease-out; }
+.customer-create-dialog h2 { margin: 0 0 2px; font-size: 18px; text-align: center; }
+.customer-create-dialog label { display: grid; gap: 7px; color: var(--ink); font-size: 13px; font-weight: 600; }
+.customer-create-dialog input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #dfe3e6; border-radius: 10px; color: var(--ink); background: #fff; font: inherit; font-size: 14px; outline: none; }
+.customer-create-dialog input:focus { border-color: #ff7875; box-shadow: 0 0 0 2px #fff1f0; }
+.customer-create-dialog__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 3px; }
+.customer-create-dialog__actions button { min-height: 44px; margin: 0; border-radius: 10px; font-size: 13px; }
+.customer-create-dialog__actions .secondary-button { border: 1px solid #d9dde1; color: #545b63; background: #fff; }
+.customer-create-dialog .field-error { margin: -6px 0 0; }
+@keyframes customer-dialog-in { from { opacity: 0; transform: translateY(5px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .admin-entry { display: block; margin: 18px auto 0; }
 .admin-page-intro { margin-bottom: 18px; }
 .admin-readonly-badge { padding: 5px 9px; border-radius: 999px; color: #2f54eb; background: #f0f5ff; font-size: 11px; font-weight: 700; }
@@ -680,6 +697,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .member-profile-card__identity small { color: #9aa1a9; font-size: 11px; }
 .member-profile-card > .admin-status-pill { margin-left: auto; }
 .member-tabs { display: flex; gap: 28px; margin-top: 20px; border-bottom: 1px solid #e7ebf0; }
+.member-follow-up-types { gap: 24px; margin-top: 16px; }
 .member-tab { position: relative; padding: 0 0 13px; border: 0; color: #8a929b; background: transparent; cursor: pointer; font-size: 13px; }
 .member-tab.is-active { color: #1677ff; font-weight: 700; }
 .member-tab.is-active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; border-radius: 2px; background: #1677ff; content: ""; }

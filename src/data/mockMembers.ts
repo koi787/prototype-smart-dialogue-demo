@@ -131,6 +131,30 @@ export const mockMembers: Member[] = [
   },
 ]
 
+const createdMembersStorageKey = 'prototype-smart-dialogue-demo.created-members'
+
+function readCreatedMockMembers(): Member[] {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(createdMembersStorageKey) ?? '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((member): member is Member => (
+      typeof member?.id === 'string'
+      && typeof member?.customerId === 'string'
+      && typeof member?.name === 'string'
+      && typeof member?.phone === 'string'
+      && typeof member?.membershipLabel === 'string'
+      && typeof member?.storeId === 'string'
+    ))
+  } catch {
+    return []
+  }
+}
+
+const createdMockMembers = readCreatedMockMembers()
+mockMembers.push(...createdMockMembers)
+
 export function findMembersByPhone(phone: string) {
   if (phone === '13800000001') {
     return [
@@ -163,17 +187,54 @@ export function isMemberInCandidateSet(member: Member, candidates: Member[]) {
   return candidates.some((candidate) => candidate.id === member.id && candidate.customerId === member.customerId)
 }
 
-export function createMockMember(name: string, phone: string) {
-  const idSuffix = Date.now()
+export function createMockMember(name: string, phone: string, storeId: string, storeName: string) {
+  const normalizedName = name.trim()
+  const normalizedPhone = phone.trim()
+  if (!normalizedName) throw new Error('请输入用户姓名')
+  if (!/^1[3-9]\d{9}$/.test(normalizedPhone)) throw new Error('请输入正确的手机号')
+  if (mockMembers.some((member) => member.phone.replace(/\D/g, '') === normalizedPhone)) {
+    throw new Error('手机号已存在')
+  }
+
+  let idSuffix = Date.now()
+  while (mockMembers.some((member) => member.id === `member-demo-${idSuffix}` || member.customerId === `customer-demo-${idSuffix}`)) {
+    idSuffix += 1
+  }
   const member: Member = {
     id: `member-demo-${idSuffix}`,
     customerId: `customer-demo-${idSuffix}`,
-    name,
-    phone,
+    name: normalizedName,
+    phone: normalizedPhone,
     membershipLabel: '待完善会员',
+    storeId,
+    storeName,
+    registeredAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
   }
+
+  const nextCreatedMembers = [...createdMockMembers, member]
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(createdMembersStorageKey, JSON.stringify(nextCreatedMembers))
+  }
+
+  createdMockMembers.push(member)
   mockMembers.push(member)
   return member
+}
+
+export function createAndAssociateMockMember(
+  name: string,
+  phone: string,
+  storeId: string,
+  storeName: string,
+  associate: (member: Member) => void,
+) {
+  const member = createMockMember(name, phone, storeId, storeName)
+  try {
+    associate(member)
+    return { member, associationError: undefined }
+  } catch (associationError) {
+    return { member, associationError }
+  }
 }
 
 export function updateMockMemberName(memberId: string, name: string) {

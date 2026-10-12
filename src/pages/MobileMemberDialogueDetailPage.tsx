@@ -23,7 +23,7 @@ export function MobileMemberDialogueDetailPage({ memberId, recordId }: { memberI
   return (
     <MobileShell title="智能对话记录详情" onBack={() => navigate(demoRoutes.mobileMemberDetail(member.id, 'follow-up'))} bottomNav={<AobenMobileNav active="member" />}>
       <section className="mobile-dialogue-detail-heading">
-        <span className="section-kicker">跟进记录 · 智能对话</span>
+        <span className="section-kicker">跟进信息 · 智能对话</span>
         <p>{record.receptionTime} · {record.method === 'face-to-face' ? '面客模式' : '事后补录'}</p>
       </section>
 
@@ -41,6 +41,22 @@ export function MobileMemberDialogueDetailPage({ memberId, recordId }: { memberI
       <section className="mobile-dialogue-detail-section">
         <div className="mobile-member-section-heading"><h2>智能对话分析</h2></div>
         <StructuredContentList content={record.aiContent} />
+      </section>
+
+      <section className="mobile-dialogue-detail-section">
+        <div className="mobile-member-section-heading"><h2>原始逐字稿</h2></div>
+        {record.transcript.length === 0 ? (
+          <div className="mobile-member-empty"><strong>暂无原始逐字稿</strong></div>
+        ) : (
+          <div className="mobile-member-transcript-list">
+            {record.transcript.map((line, index) => (
+              <article key={`${line.speaker}-${index}`}>
+                <strong>{line.speaker}</strong>
+                <p>{line.text}</p>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </MobileShell>
   )
